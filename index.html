@@ -1,0 +1,833 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>御品菜單配置管理系統</title>
+<meta property="og:title" content="御品菜單配置管理系統">
+<meta property="og:description" content="健康餐與風味餐菜單排班配置工具">
+<meta property="og:type" content="website">
+<!-- SheetJS for Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+:root {
+  --green-dark: #2e7d32;
+  --blue-dark: #1565c0;
+  --border: #cfd8dc;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: #eceff1;
+  min-height: 100vh;
+  padding: 18px 12px;
+}
+
+h1 {
+  text-align: center;
+  color: var(--green-dark);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+  letter-spacing: 3px;
+}
+
+.toolbar {
+  display: flex; gap: 8px; justify-content: center;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.toolbar button {
+  padding: 7px 18px; border: none; border-radius: 6px;
+  font-family: inherit; font-size: 0.88rem; font-weight: 500;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.toolbar button:hover { opacity: 0.85; }
+
+/* 新增日期 → 健康餐地點的綠色 */
+.btn-add    { background: #66bb6a; color: #fff; }
+/* 匯出 Excel → 風味餐地點的藍色 */
+.btn-export { background: #42a5f5; color: #fff; }
+/* 自動儲存狀態 */
+.btn-save   { background: #ff9800; color: #fff; cursor: default !important; }
+/* 清除 */
+.btn-clear  { background: #c62828; color: #fff; }
+
+.schedule-area { display: flex; flex-direction: column; gap: 24px; }
+
+.week-block {
+  background: #fff; border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.09); overflow: hidden;
+}
+.week-titlebar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; background: #37474f;
+  flex-wrap: wrap;
+}
+.week-label { color: #fff; font-weight: 700; font-size: 0.9rem; white-space: nowrap; }
+.week-date {
+  border: 1px solid #78909c; border-radius: 4px;
+  padding: 4px 8px; font-family: inherit;
+  font-size: 0.85rem; background: #546e7a; color: #fff;
+  cursor: pointer;
+}
+.week-date::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+.week-day {
+  font-size: 1rem; font-weight: 700; color: #fff;
+  min-width: 48px; text-align: center;
+  background: rgba(255,255,255,0.12); border-radius: 4px;
+  padding: 3px 8px; letter-spacing: 1px;
+}
+.btn-del-week {
+  background: #ef9a9a; border: none; border-radius: 5px;
+  padding: 4px 12px; cursor: pointer; font-size: 0.8rem; font-family: inherit;
+}
+.btn-del-week:hover { background: #e57373; }
+
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+table {
+  border-collapse: collapse; width: 100%;
+  min-width: 860px; font-size: 0.8rem;
+}
+th, td { border: 1px solid var(--border); text-align: center; vertical-align: middle; }
+
+.th-week   { background: #37474f; color: #fff; font-weight: 700; padding: 6px 8px; }
+.th-health { background: var(--green-dark); color: #fff; font-weight: 700; padding: 5px 8px; }
+.th-wind   { background: var(--blue-dark);  color: #fff; font-weight: 700; padding: 5px 8px; }
+.th-hloc   { background: #66bb6a; color: #fff; font-weight: 600; padding: 4px 6px; font-size: 0.78rem; }
+.th-wloc   { background: #42a5f5; color: #fff; font-weight: 600; padding: 4px 6px; font-size: 0.78rem; }
+.th-sub    { font-size: 0.72rem; font-weight: 500; padding: 3px 4px; }
+.th-sub-h  { background: #81c784; color: #fff; }
+.th-sub-w  { background: #64b5f6; color: #fff; }
+
+.td-cat {
+  background: #eceff1; color: #37474f; font-weight: 700;
+  font-size: 0.82rem; padding: 5px 8px; white-space: nowrap; min-width: 52px;
+}
+
+.td-l1 { padding: 3px; min-width: 90px; }
+.td-l2 { padding: 3px; min-width: 92px; }
+
+.h-rice { background: #ffe0b2; }
+.h-rice-l2 { background: #fff3e0; }
+.w-rice { background: #ffe0b2; }
+.w-rice-l2 { background: #fff3e0; }
+
+.h-main { background: #c8e6c9; }
+.h-sub  { background: #fff9c4; }
+.h-item { background: #f1f8e9; }
+.w-main { background: #bbdefb; }
+.w-sub  { background: #e8eaf6; }
+.w-item { background: #e3f2fd; }
+.h-main-l2 { background: #e8f5e9; }
+.h-sub-l2  { background: #fffde7; }
+.h-item-l2 { background: #f9fbe7; }
+.w-main-l2 { background: #e3f2fd; }
+.w-sub-l2  { background: #ede7f6; }
+.w-item-l2 { background: #f3f8ff; }
+
+.food-red    { background: #ff5252 !important; color: #fff !important; }
+.food-yellow { background: #ffee33 !important; color: #333 !important; }
+.food-green  { background: #69f04a !important; color: #1a3a00 !important; }
+.food-white  { background: #f0f0f0 !important; color: #333 !important; }
+.food-black  { background: #546e7a !important; color: #fff !important; }
+.food-purple { background: #ce93d8 !important; color: #fff !important; }
+.food-pink   { background: #f48fb1 !important; color: #fff !important; }
+
+select {
+  width: 100%; padding: 3px 18px 3px 5px;
+  border: 1px solid #b0bec5; border-radius: 4px;
+  font-family: inherit; font-size: 0.77rem;
+  background-color: #fff; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23607d8b'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 4px center;
+  cursor: pointer; transition: border-color 0.15s;
+}
+select:focus { outline: none; border-color: #43a047; }
+select.sel-l1 { font-weight: 600; }
+select.sel-l2 { font-size: 0.75rem; }
+select.sel-l2:disabled {
+  background-color: #f5f5f5; color: #bdbdbd;
+  border-color: #e0e0e0; cursor: default;
+}
+
+/* 自動儲存提示 */
+.save-toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #43a047; color: #fff;
+  padding: 8px 18px; border-radius: 8px;
+  font-size: 0.85rem; font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  opacity: 0; transition: opacity 0.3s;
+  pointer-events: none; z-index: 9999;
+}
+.save-toast.show { opacity: 1; }
+
+/* DB panel */
+.db-panel {
+  background: #fff; border-radius: 10px;
+  padding: 16px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); margin-top: 8px;
+}
+.db-panel h2 { font-size: 0.95rem; color: #37474f; margin-bottom: 10px; font-weight: 700; }
+.db-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.db-cat { border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; min-width: 110px; }
+.db-cat-title { color: #fff; font-size: 0.76rem; font-weight: 700; padding: 4px 8px; text-align: center; }
+.db-cat-items { padding: 5px 7px; font-size: 0.74rem; color: #455a64; display: flex; flex-direction: column; gap: 2px; max-height: 780px; overflow-y: auto; }
+.db-item { padding: 2px 4px; border-radius: 3px; margin-bottom: 1px; font-size: 0.73rem; }
+
+/* ── 手機版優化 ── */
+@media (max-width: 600px) {
+  body { padding: 10px 6px; }
+
+  h1 { font-size: 1.1rem; letter-spacing: 1px; margin-bottom: 10px; }
+
+  .toolbar { gap: 6px; }
+  .toolbar button { padding: 8px 12px; font-size: 0.82rem; flex: 1 1 auto; min-width: 110px; }
+
+  .week-titlebar { gap: 6px; padding: 8px 10px; }
+  .week-label { font-size: 0.82rem; }
+  .week-date { font-size: 0.78rem; padding: 4px 6px; flex: 1 1 auto; }
+  .week-day { font-size: 0.88rem; min-width: 40px; padding: 3px 5px; }
+  .btn-del-week { padding: 5px 10px; font-size: 0.78rem; }
+
+  /* 手機版：表格橫向捲動提示 */
+  .tbl-wrap::before {
+    content: '← 左右滑動查看完整表格 →';
+    display: block;
+    text-align: center;
+    font-size: 0.72rem;
+    color: #90a4ae;
+    padding: 4px 0;
+    background: #f5f5f5;
+  }
+
+  table { font-size: 0.72rem; min-width: 700px; }
+  .td-l1 { min-width: 70px; }
+  .td-l2 { min-width: 72px; }
+  select { font-size: 0.7rem; padding: 2px 14px 2px 3px; }
+  .td-cat { font-size: 0.74rem; padding: 4px 5px; min-width: 42px; }
+
+  .loc-sel { font-size: 0.72rem !important; max-width: 60px !important; }
+
+  .ctrlBar-btn { padding: 6px 10px !important; font-size: 0.76rem !important; }
+
+  .db-panel { padding: 12px 10px; }
+  .db-panel h2 { font-size: 0.88rem; }
+  .db-grid { gap: 6px; }
+  .db-cat { min-width: 90px; }
+
+  .save-toast { bottom: 12px; right: 10px; padding: 6px 14px; font-size: 0.78rem; }
+}
+</style>
+</head>
+<body>
+
+<h1>🍱 御品菜單配置管理系統</h1>
+
+<div class="toolbar">
+  <button class="btn-add"    onclick="addWeek()">➕ 新增日期</button>
+  <button class="btn-export" onclick="exportExcel()">📊 匯出 Excel</button>
+  <button class="btn-save"   id="saveStatus">💾 自動儲存中…</button>
+  <button class="btn-clear"  onclick="clearAll()">🗑️ 清除全部</button>
+</div>
+
+<div class="schedule-area" id="scheduleArea"></div>
+
+<div class="db-panel">
+  <h2>📦 食材依顏色分類</h2>
+  <div class="db-grid" id="dbGrid"></div>
+</div>
+
+<div class="db-panel" style="margin-top:12px;">
+  <h2>📋 食材依類別分類</h2>
+  <div class="db-grid" id="catGrid"></div>
+</div>
+
+<div class="save-toast" id="saveToast">✅ 已自動儲存</div>
+
+<script>
+// ===== 食材顏色對照 =====
+const FOOD_COLOR = {};
+const COLOR_GROUPS = {
+  red:    { label:"紅", bg:"#ff3b30", fg:"#fff", titleBg:"#c0392b", items:["紅椒","枸杞","小番茄","紅地瓜","紅蘿蔔","紅蘿蔔球"] },
+  yellow: { label:"黃", bg:"#ffee00", fg:"#333", titleBg:"#d4a017", items:["黃豆芽","豆干","豆皮","豆腸","麵輪","玉米","玉米筍","南瓜","栗子","白木耳","黃椒","銀杏","白靈芝菇","金針菇","洋菇片","猴頭菇","珊瑚菇","黃地瓜","牛蒡"] },
+  green:  { label:"綠", bg:"#4cd964", fg:"#1a3a00", titleBg:"#27ae60", items:["油菜","青江菜","蚵白菜","小白菜","菠菜","芥菜","地瓜葉","芥蘭菜","龍鬚菜","A菜","芹菜","青花椰","敏豆","毛豆莢","毛豆仁","長豆","鷹嘴豆","大黃瓜","小黃瓜","絲瓜","佛手瓜","胡瓜","秋葵","青椒"] },
+  white:  { label:"白", bg:"#f0f0f0", fg:"#333", titleBg:"#90a4ae", items:["高麗菜","大白菜","豆芽菜","白花椰","板豆腐","白干絲","水煮蛋","苦瓜","冬瓜","洋地瓜","杏鮑菇","美白菇","秀珍菇","馬鈴薯","山藥","白蘿蔔","蓮藕","白米","小米","藜麥","糙米"] },
+  black:  { label:"黑", bg:"#555555", fg:"#fff", titleBg:"#222", items:["黑豆","花生","木耳","雲耳","海帶根","海帶結","海帶絲","鮮香菇","鴻禧菇","草菇"] },
+  purple: { label:"紫", bg:"#bf5af2", fg:"#fff", titleBg:"#8e44ad", items:["紫地瓜","紫米","五穀"] },
+  pink:   { label:"粉", bg:"#ff69b4", fg:"#fff", titleBg:"#c2185b", items:["甜菜根"] }
+};
+
+Object.entries(COLOR_GROUPS).forEach(([key, g]) => {
+  g.items.forEach(item => { FOOD_COLOR[item] = key; });
+});
+
+// ===== 食材資料庫 =====
+const DB = {
+  "健康餐主菜": ["-","雙拼舒肥雞胸","紐澳良腿排","蔥燒豬五花","義式雞胸","滑蛋豬","醬烤梅花豬","洋蔥肉片","蒜泥白肉","韓式肉片","蒜香烤五花","照燒腿排","黑胡椒胸丁","義式腿排"],
+  "風味餐主菜": ["-","鳳梨糖醋雞","烤鴨","油雞","沙茶肉片","北菇滑雞","川椒雞","叉燒/油雞","韓式炸雞","滷排骨","紅糟肉","蜜汁雞腿","炸排骨","烤鴨/叉燒","蔗香腿排","醬烤梅花豬","香酥雞排","鹹豬肉"],
+  "副主菜":  ["-","士林香腸","雞捲","港點","魚丸","冬粉","杏鮑菇玉米筍"],
+  "米飯":    ["-","白米","紫米","小米","藜麥","糙米","五穀"],
+  "白葉菜":  ["-","高麗菜","大白菜","豆芽菜","黃豆芽","白花椰"],
+  "綠葉菜":  ["-","油菜","青江菜","蚵白菜","小白菜","菠菜","芥菜","地瓜葉","芥蘭菜","龍鬚菜","A菜","芹菜","青花椰"],
+  "蛋白質":  ["-","敏豆","毛豆莢","毛豆仁","長豆","鷹嘴豆","黑豆","豆干","板豆腐","豆皮","枸杞","花生","白干絲","銀杏","麻婆豆腐","水煮蛋","麵輪"],
+  "菇":      ["-","杏鮑菇","鮮香菇","鴻禧菇","美白菇","白靈芝菇","金針菇","秀珍菇","洋菇片","草菇","猴頭菇","珊瑚菇"],
+  "瓜果":    ["-","大黃瓜","小黃瓜","苦瓜","絲瓜","冬瓜","佛手瓜","胡瓜","秋葵","小番茄","大頭菜"],
+  "根莖":    ["-","馬鈴薯","紅地瓜","黃地瓜","紫地瓜","山藥","芋頭","紅蘿蔔","白蘿蔔","蓮藕","牛蒡","甜菜根","紅蘿蔔球","洋地瓜"],
+  "海帶":    ["-","海帶根","海帶結","海帶絲"],
+  "其他":    ["-","玉米","玉米筍","南瓜","木耳","雲耳","白木耛","栗子","紅椒","黃椒","青椒","銀杏"],
+  "輔料":    ["-","香鬆米","海苔米","義式香","紅白椿"]
+};
+
+const ROW_CATS = {
+  "主菜":   ["-","健康餐主菜","風味餐主菜"],
+  "副主菜": ["-","副主菜"],
+  "米飯":   ["-","米飯"],
+  "1":      ["-","白葉菜","綠葉菜","菇","瓜果","根莖","海帶","其他"],
+  "2":      ["-","白葉菜","綠葉菜","菇","瓜果","根莖","海帶","其他"],
+  "3":      ["-","白葉菜","綠葉菜","蛋白質","菇","瓜果","根莖","海帶","其他"],
+  "4":      ["-","菇","蛋白質","瓜果","根莖","海帶","其他"],
+  "5":      ["-","瓜果","根莖","菇","蛋白質","海帶","其他"],
+  "6":      ["-","根莖","瓜果","海帶","其他"],
+  "7":      ["-","輔料","其他"]
+};
+
+const ROWS = ["主菜","副主菜","米飯","1","2","3","4","5","6","7"];
+const DEFAULT_HEALTH_LOCS = ["P7","3C","揚明"];
+const DEFAULT_WIND_LOCS   = ["揚明","休斯微"];
+const PRESET_LOCS = ["P7","3C","揚明","休斯微"];
+
+let weekCount = 0;
+let saveTimer = null;
+let weekDataMap = {}; // wid -> { hLocs, wLocs, date }
+
+// ===== 自動儲存 =====
+const STORAGE_KEY = "yupin_menu_v2";
+
+function showSaveToast() {
+  const t = document.getElementById("saveToast");
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+function scheduleAutoSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveAll();
+    showSaveToast();
+  }, 800);
+}
+
+function saveAll() {
+  const data = [];
+  document.querySelectorAll(".week-block").forEach(block => {
+    const wid = block.id.replace("block_", "");
+    const date = block.querySelector(".week-date")?.value || "";
+    const info = weekDataMap[wid] || {};
+    const hLocs = info.hLocs || [];
+    const wLocs = info.wLocs || [];
+
+    // 讀取地點選單目前的值
+    const locSels = [...block.querySelectorAll(".loc-sel")];
+    const locInps = [...block.querySelectorAll(".loc-inp")];
+    let locIdx = 0;
+    const resolvedHLocs = hLocs.map(() => {
+      const s = locSels[locIdx]; const inp = locInps[locIdx]; locIdx++;
+      if (!s) return "";
+      return s.value === "__custom__" ? (inp?.value || "") : s.value;
+    });
+    const resolvedWLocs = wLocs.map(() => {
+      const s = locSels[locIdx]; const inp = locInps[locIdx]; locIdx++;
+      if (!s) return "";
+      return s.value === "__custom__" ? (inp?.value || "") : s.value;
+    });
+
+    // 讀取所有 select 值
+    const cells = [];
+    block.querySelectorAll("table tr").forEach((tr, rIdx) => {
+      const catTd = tr.querySelector(".td-cat");
+      if (!catTd) return;
+      const rowName = catTd.textContent;
+      const sels1 = [...tr.querySelectorAll("td.td-l1 select")];
+      const sels2 = [...tr.querySelectorAll("td.td-l2 select")];
+      sels1.forEach((s1, i) => {
+        cells.push({ row: rowName, col: i, v1: s1.value, v2: sels2[i]?.value || "" });
+      });
+    });
+
+    data.push({ wid, date, hLocs: resolvedHLocs, wLocs: resolvedWLocs, cells });
+  });
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ weekCount, data }));
+    document.getElementById("saveStatus").textContent = "💾 已自動儲存";
+  } catch(e) {
+    document.getElementById("saveStatus").textContent = "⚠️ 儲存失敗";
+  }
+}
+
+function loadAll() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    if (!saved || !saved.data) return false;
+
+    weekCount = 0;
+    document.getElementById("scheduleArea").innerHTML = "";
+    weekDataMap = {};
+
+    saved.data.forEach(item => {
+      weekCount++;
+      const wid = `w${weekCount}`;
+      const block = buildWeek(weekCount, item.hLocs, item.wLocs);
+      document.getElementById("scheduleArea").appendChild(block);
+
+      // 恢復日期
+      const di = block.querySelector(".week-date");
+      if (di && item.date) {
+        di.value = item.date;
+        di.dispatchEvent(new Event("change"));
+      }
+
+      // 恢復地點選單
+      const locSels = [...block.querySelectorAll(".loc-sel")];
+      const locInps = [...block.querySelectorAll(".loc-inp")];
+      const allLocs = [...(item.hLocs||[]), ...(item.wLocs||[])];
+      allLocs.forEach((loc, i) => {
+        const s = locSels[i]; const inp = locInps[i];
+        if (!s) return;
+        if (PRESET_LOCS.includes(loc)) {
+          s.value = loc; if(inp) { inp.style.display="none"; inp.value=loc; }
+        } else {
+          s.value = "__custom__"; if(inp) { inp.style.display="block"; inp.value=loc; }
+        }
+      });
+
+      // 恢復儲存格
+      const rowMap = {};
+      block.querySelectorAll("table tr").forEach(tr => {
+        const catTd = tr.querySelector(".td-cat");
+        if (!catTd) return;
+        rowMap[catTd.textContent] = tr;
+      });
+      (item.cells || []).forEach(c => {
+        const tr = rowMap[c.row]; if (!tr) return;
+        const sels1 = [...tr.querySelectorAll("td.td-l1 select")];
+        const sels2 = [...tr.querySelectorAll("td.td-l2 select")];
+        const s1 = sels1[c.col]; const s2 = sels2[c.col];
+        if (s1 && c.v1) {
+          s1.value = c.v1;
+          s1.dispatchEvent(new Event("change"));
+          setTimeout(() => {
+            if (s2 && c.v2) {
+              s2.value = c.v2;
+              s2.dispatchEvent(new Event("change"));
+            }
+          }, 50);
+        }
+      });
+    });
+    return true;
+  } catch(e) {
+    console.warn("載入失敗", e);
+    return false;
+  }
+}
+
+// ===== 工具函式 =====
+function getFoodColors(item) {
+  const key = FOOD_COLOR[item];
+  if (!key) return null;
+  return { bg: COLOR_GROUPS[key].bg, fg: COLOR_GROUPS[key].fg || "#333" };
+}
+
+function makeColPair(rowKey, defaultStyle, defaultStyleL2) {
+  const cats = ROW_CATS[rowKey] || [];
+
+  const sel1 = document.createElement("select");
+  sel1.className = "sel-l1";
+  sel1.innerHTML = cats.map(c =>
+    `<option value="${c}" ${c==="-"?"selected":""}>${c}</option>`
+  ).join("");
+
+  const sel2 = document.createElement("select");
+  sel2.className = "sel-l2";
+
+  const td1 = document.createElement("td");
+  td1.className = `td-l1 ${defaultStyle}`;
+  const td2 = document.createElement("td");
+  td2.className = `td-l2 ${defaultStyleL2}`;
+
+  function applyClosedState() {
+    sel2.innerHTML = `<option value="-">-</option>`;
+    sel2.disabled = true;
+    sel2.style.background = "#e0e0e0";
+    sel2.style.color = "#9e9e9e";
+    sel2.style.fontWeight = "600";
+    sel2.style.borderColor = "";
+    td2.style.background = "#e0e0e0";
+    td2.style.color = "#9e9e9e";
+    td2.className = `td-l2 ${defaultStyleL2}`;
+  }
+  applyClosedState();
+
+  sel1.addEventListener("change", () => {
+    const cat = sel1.value;
+    td2.className = `td-l2 ${defaultStyleL2}`;
+    td2.style.background=""; td2.style.color="";
+    sel2.style.color=""; sel2.style.fontWeight=""; sel2.style.borderColor="";
+    if (!cat || cat==="-") { applyClosedState(); scheduleAutoSave(); return; }
+    const items = DB[cat] || [];
+    sel2.innerHTML = `<option value="">-- 品項 --</option>` +
+      items.map(i=>`<option value="${i}">${i}</option>`).join("");
+    sel2.disabled=false; sel2.style.background=""; sel2.style.color=""; sel2.value="";
+    scheduleAutoSave();
+  });
+
+  sel2.addEventListener("change", () => {
+    const item = sel2.value;
+    if (!item || item==="-") {
+      td2.style.background=""; td2.style.color="";
+      sel2.style.background=""; sel2.style.color="";
+      sel2.style.fontWeight=""; sel2.style.borderColor="";
+      td2.className=`td-l2 ${defaultStyleL2}`;
+    } else {
+      const colors = getFoodColors(item);
+      if (colors) {
+        td2.style.background=colors.bg; td2.style.color=colors.fg;
+        sel2.style.background=colors.bg; sel2.style.color=colors.fg;
+        sel2.style.fontWeight="600"; sel2.style.borderColor="transparent";
+      } else {
+        td2.style.background=""; td2.style.color="";
+        sel2.style.background=""; sel2.style.color="";
+        sel2.style.fontWeight=""; sel2.style.borderColor="";
+        td2.className=`td-l2 ${defaultStyleL2}`;
+      }
+    }
+    scheduleAutoSave();
+  });
+
+  td1.appendChild(sel1); td2.appendChild(sel2);
+  return [td1, td2];
+}
+
+function makeLocTh(loc, type, onDelete) {
+  const th = document.createElement("th");
+  th.className = type==="h" ? "th-hloc" : "th-wloc";
+  th.colSpan = 2;
+
+  const isPreset = PRESET_LOCS.includes(loc);
+
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "display:flex;align-items:center;justify-content:center;gap:3px;";
+
+  const sel = document.createElement("select");
+  sel.className = "loc-sel";
+  sel.style.cssText = "background:transparent;border:1px solid rgba(255,255,255,0.6);color:#fff;border-radius:4px;padding:2px 3px;font-size:0.78rem;font-weight:700;max-width:75px;cursor:pointer;";
+  sel.innerHTML = PRESET_LOCS.map(p=>`<option value="${p}" ${p===loc?"selected":""}>${p}</option>`).join("") +
+    `<option value="__custom__" ${!isPreset?"selected":""}>自訂…</option>`;
+
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "loc-inp";
+  inp.value = loc;
+  inp.placeholder = "輸入名稱";
+  inp.style.cssText = `display:${!isPreset?"block":"none"};width:58px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.6);color:#fff;border-radius:4px;padding:2px 4px;font-size:0.78rem;font-weight:700;`;
+
+  sel.addEventListener("change", () => {
+    if (sel.value==="__custom__") {
+      inp.style.display="block"; inp.focus();
+    } else {
+      inp.style.display="none"; inp.value=sel.value;
+    }
+    scheduleAutoSave();
+  });
+  inp.addEventListener("input", scheduleAutoSave);
+
+  const delBtn = document.createElement("button");
+  delBtn.textContent = "✕";
+  delBtn.title = "刪除此欄";
+  delBtn.style.cssText = "background:rgba(255,80,80,0.75);border:none;border-radius:3px;color:#fff;font-size:0.68rem;padding:2px 5px;cursor:pointer;line-height:1;";
+  delBtn.addEventListener("click", onDelete);
+
+  wrap.appendChild(sel); wrap.appendChild(inp); wrap.appendChild(delBtn);
+  th.appendChild(wrap);
+  return th;
+}
+
+function buildWeek(weekNum, initHLocs, initWLocs) {
+  const wid = `w${weekNum}`;
+  let hLocs = initHLocs ? [...initHLocs] : [...DEFAULT_HEALTH_LOCS];
+  let wLocs = initWLocs ? [...initWLocs] : [...DEFAULT_WIND_LOCS];
+
+  // 記錄到 map
+  weekDataMap[wid] = { hLocs, wLocs };
+
+  const block = document.createElement("div");
+  block.className = "week-block";
+  block.id = `block_${wid}`;
+
+  const weekDays = ["（日）","（一）","（二）","（三）","（四）","（五）","（六）"];
+
+  block.innerHTML = `
+    <div class="week-titlebar">
+      <span class="week-label">第 ${weekNum} 筆</span>
+      <input class="week-date" type="date" id="date_${wid}">
+      <span class="week-day" id="day_${wid}">請選日期</span>
+      <button class="btn-del-week" onclick="removeWeek('${wid}')">刪除</button>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const di = document.getElementById(`date_${wid}`);
+    const ds = document.getElementById(`day_${wid}`);
+    if (di) di.addEventListener("change", () => {
+      if (di.value) {
+        const d = new Date(di.value+"T00:00:00");
+        ds.textContent = weekDays[d.getDay()];
+        ds.style.color = (d.getDay()===0||d.getDay()===6)?"#ff6b6b":"#fff";
+      } else { ds.textContent="請選日期"; ds.style.color="#b0bec5"; }
+      scheduleAutoSave();
+    });
+  }, 0);
+
+  function rebuildTable() {
+    weekDataMap[wid].hLocs = hLocs;
+    weekDataMap[wid].wLocs = wLocs;
+
+    const old = block.querySelector(".tbl-wrap");
+    if (old) old.remove();
+
+    const wrap = document.createElement("div");
+    wrap.className = "tbl-wrap";
+
+    const ctrlBar = document.createElement("div");
+    ctrlBar.style.cssText = "display:flex;gap:8px;padding:6px 12px;background:#f0f4f8;border-bottom:1px solid #ddd;flex-wrap:wrap;";
+
+    const btnH = document.createElement("button");
+    btnH.textContent = "➕ 新增健康餐地點";
+    btnH.className = "ctrlBar-btn";
+    btnH.style.cssText = "background:#66bb6a;color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:0.8rem;cursor:pointer;font-family:inherit;";
+    btnH.onclick = () => { hLocs.push("新地點"); rebuildTable(); scheduleAutoSave(); };
+
+    const btnW = document.createElement("button");
+    btnW.textContent = "➕ 新增風味餐地點";
+    btnW.className = "ctrlBar-btn";
+    btnW.style.cssText = "background:#42a5f5;color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:0.8rem;cursor:pointer;font-family:inherit;";
+    btnW.onclick = () => { wLocs.push("新地點"); rebuildTable(); scheduleAutoSave(); };
+
+    ctrlBar.appendChild(btnH); ctrlBar.appendChild(btnW);
+
+    const tbl = document.createElement("table");
+
+    const hr1 = tbl.insertRow();
+    const thCat = document.createElement("th");
+    thCat.className="th-week"; thCat.rowSpan=3; thCat.textContent="類別";
+    hr1.appendChild(thCat);
+
+    const thH = document.createElement("th");
+    thH.className="th-health"; thH.colSpan=hLocs.length*2;
+    thH.textContent="▶▶▶ 健康餐 ◀◀◀"; hr1.appendChild(thH);
+
+    const thW = document.createElement("th");
+    thW.className="th-wind"; thW.colSpan=wLocs.length*2;
+    thW.textContent="▶▶▶ 風味餐 ◀◀◀"; hr1.appendChild(thW);
+
+    const hr2 = tbl.insertRow();
+    hLocs.forEach((loc, i) => {
+      hr2.appendChild(makeLocTh(loc, "h", () => {
+        if (hLocs.length<=1) { alert("至少需保留一個健康餐地點"); return; }
+        if (!confirm(`刪除「${loc}」欄位？`)) return;
+        hLocs.splice(i,1); rebuildTable(); scheduleAutoSave();
+      }));
+    });
+    wLocs.forEach((loc, i) => {
+      hr2.appendChild(makeLocTh(loc, "w", () => {
+        if (wLocs.length<=1) { alert("至少需保留一個風味餐地點"); return; }
+        if (!confirm(`刪除「${loc}」欄位？`)) return;
+        wLocs.splice(i,1); rebuildTable(); scheduleAutoSave();
+      }));
+    });
+
+    const hr3 = tbl.insertRow();
+    hLocs.forEach(() => ["類別","品項"].forEach(l => {
+      const th=document.createElement("th"); th.className="th-sub th-sub-h"; th.textContent=l; hr3.appendChild(th);
+    }));
+    wLocs.forEach(() => ["類別","品項"].forEach(l => {
+      const th=document.createElement("th"); th.className="th-sub th-sub-w"; th.textContent=l; hr3.appendChild(th);
+    }));
+
+    ROWS.forEach(row => {
+      const tr = tbl.insertRow();
+      const tdCat=document.createElement("td"); tdCat.className="td-cat"; tdCat.textContent=row; tr.appendChild(tdCat);
+      const hS  = row==="主菜"?"h-main":row==="副主菜"?"h-sub":row==="米飯"?"h-rice":"h-item";
+      const hS2 = row==="主菜"?"h-main-l2":row==="副主菜"?"h-sub-l2":row==="米飯"?"h-rice-l2":"h-item-l2";
+      const wS  = row==="主菜"?"w-main":row==="副主菜"?"w-sub":row==="米飯"?"w-rice":"w-item";
+      const wS2 = row==="主菜"?"w-main-l2":row==="副主菜"?"w-sub-l2":row==="米飯"?"w-rice-l2":"w-item-l2";
+      hLocs.forEach(()=>{ const [t1,t2]=makeColPair(row,hS,hS2); tr.appendChild(t1); tr.appendChild(t2); });
+      wLocs.forEach(()=>{ const [t1,t2]=makeColPair(row,wS,wS2); tr.appendChild(t1); tr.appendChild(t2); });
+    });
+
+    wrap.appendChild(ctrlBar); wrap.appendChild(tbl);
+    block.appendChild(wrap);
+  }
+
+  rebuildTable();
+  return block;
+}
+
+// ===== 主要功能 =====
+function addWeek() {
+  weekCount++;
+  const block = buildWeek(weekCount);
+  document.getElementById("scheduleArea").appendChild(block);
+  scheduleAutoSave();
+}
+
+function removeWeek(wid) {
+  if (!confirm("確定刪除此筆？")) return;
+  document.getElementById(`block_${wid}`)?.remove();
+  delete weekDataMap[wid];
+  scheduleAutoSave();
+}
+
+function clearAll() {
+  if (!confirm("確定清除全部？這將同時清除儲存的資料。")) return;
+  document.getElementById("scheduleArea").innerHTML="";
+  weekCount=0; weekDataMap={};
+  localStorage.removeItem(STORAGE_KEY);
+  document.getElementById("saveStatus").textContent = "💾 自動儲存中…";
+}
+
+// ===== 匯出 Excel =====
+function getLocName(sel, inp) {
+  if (!sel) return "";
+  return sel.value === "__custom__" ? (inp?.value || "") : sel.value;
+}
+
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  document.querySelectorAll(".week-block").forEach((block, bi) => {
+    const date = block.querySelector(".week-date")?.value || `第${bi+1}筆`;
+    const day  = block.querySelector(".week-day")?.textContent || "";
+
+    // 讀取地點
+    const locSels = [...block.querySelectorAll(".loc-sel")];
+    const locInps = [...block.querySelectorAll(".loc-inp")];
+
+    const wid = block.id.replace("block_", "");
+    const info = weekDataMap[wid] || {};
+    const hLocsCount = (info.hLocs || DEFAULT_HEALTH_LOCS).length;
+    const wLocsCount = (info.wLocs || DEFAULT_WIND_LOCS).length;
+
+    const resolvedLocs = locSels.map((s, i) => getLocName(s, locInps[i]));
+    const hLocNames = resolvedLocs.slice(0, hLocsCount);
+    const wLocNames = resolvedLocs.slice(hLocsCount, hLocsCount + wLocsCount);
+
+    // 建立表頭
+    const header1 = ["類別"];
+    hLocNames.forEach(l => { header1.push(`健康餐-${l}-類別`); header1.push(`健康餐-${l}-品項`); });
+    wLocNames.forEach(l => { header1.push(`風味餐-${l}-類別`); header1.push(`風味餐-${l}-品項`); });
+
+    const sheetData = [
+      [`日期：${date}　${day}`],
+      header1
+    ];
+
+    block.querySelectorAll("table tr").forEach(tr => {
+      const catTd = tr.querySelector(".td-cat");
+      if (!catTd) return;
+      const rowArr = [catTd.textContent];
+      const sels1 = [...tr.querySelectorAll("td.td-l1 select")];
+      const sels2 = [...tr.querySelectorAll("td.td-l2 select")];
+      sels1.forEach((s1, i) => {
+        rowArr.push(s1.value && s1.value !== "-" ? s1.value : "");
+        rowArr.push(sels2[i]?.value && sels2[i].value !== "-" ? sels2[i].value : "");
+      });
+      sheetData.push(rowArr);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+    // 欄寬
+    ws['!cols'] = header1.map((_, i) => ({ wch: i === 0 ? 8 : 14 }));
+
+    // 合併第一列
+    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:header1.length-1} }];
+
+    const sheetName = date.replace(/[\\\/\?\*\[\]:]/g, "_").slice(0, 31) || `第${bi+1}筆`;
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  if (wb.SheetNames.length === 0) {
+    alert("沒有可匯出的資料，請先新增日期並填寫菜單。");
+    return;
+  }
+
+  XLSX.writeFile(wb, `御品菜單_${new Date().toLocaleDateString("zh-TW").replace(/\//g,"-")}.xlsx`);
+}
+
+// ===== 食材色塊面板 =====
+function renderDB() {
+  const grid=document.getElementById("dbGrid");
+  Object.entries(COLOR_GROUPS).forEach(([key,g])=>{
+    const div=document.createElement("div"); div.className="db-cat";
+    div.innerHTML=`<div class="db-cat-title" style="background:${g.titleBg}">${g.label}</div>
+      <div class="db-cat-items">${g.items.map(i=>`<div class="db-item" style="background:${g.bg};color:${g.fg||'#333'}">${i}</div>`).join("")}</div>`;
+    grid.appendChild(div);
+  });
+}
+
+// ===== 食材類別色塊面板 =====
+// 每個分類對應的顯示顏色（標題背景、標題文字、品項背景、品項文字）
+const CAT_STYLES = {
+  "健康餐主菜": { titleBg:"#2e7d32", titleFg:"#fff", itemBg:"#c8e6c9", itemFg:"#1b5e20" },
+  "風味餐主菜": { titleBg:"#1565c0", titleFg:"#fff", itemBg:"#bbdefb", itemFg:"#0d47a1" },
+  "副主菜":     { titleBg:"#f57f17", titleFg:"#fff", itemBg:"#fff9c4", itemFg:"#6d4c00" },
+  "米飯":       { titleBg:"#795548", titleFg:"#fff", itemBg:"#ffe0b2", itemFg:"#4e342e" },
+  "白葉菜":     { titleBg:"#546e7a", titleFg:"#fff", itemBg:"#eceff1", itemFg:"#263238" },
+  "綠葉菜":     { titleBg:"#388e3c", titleFg:"#fff", itemBg:"#dcedc8", itemFg:"#1b5e20" },
+  "蛋白質":     { titleBg:"#e65100", titleFg:"#fff", itemBg:"#ffe0b2", itemFg:"#bf360c" },
+  "菇":         { titleBg:"#6d4c41", titleFg:"#fff", itemBg:"#d7ccc8", itemFg:"#3e2723" },
+  "瓜果":       { titleBg:"#00838f", titleFg:"#fff", itemBg:"#b2ebf2", itemFg:"#006064" },
+  "根莖":       { titleBg:"#c62828", titleFg:"#fff", itemBg:"#ffcdd2", itemFg:"#b71c1c" },
+  "海帶":       { titleBg:"#1a237e", titleFg:"#fff", itemBg:"#c5cae9", itemFg:"#1a237e" },
+  "其他":       { titleBg:"#616161", titleFg:"#fff", itemBg:"#f5f5f5", itemFg:"#424242" },
+  "輔料":       { titleBg:"#6a1b9a", titleFg:"#fff", itemBg:"#e1bee7", itemFg:"#4a148c" }
+};
+
+function renderCatDB() {
+  const grid = document.getElementById("catGrid");
+  Object.entries(DB).forEach(([cat, items]) => {
+    const style = CAT_STYLES[cat] || { titleBg:"#607d8b", titleFg:"#fff", itemBg:"#eceff1", itemFg:"#37474f" };
+    const realItems = items.filter(i => i !== "-");
+    const div = document.createElement("div");
+    div.className = "db-cat";
+    div.innerHTML = `
+      <div class="db-cat-title" style="background:${style.titleBg};color:${style.titleFg}">${cat}</div>
+      <div class="db-cat-items">${realItems.map(i =>
+        `<div class="db-item" style="background:${style.itemBg};color:${style.itemFg}">${i}</div>`
+      ).join("")}</div>`;
+    grid.appendChild(div);
+  });
+}
+
+// ===== 初始化 =====
+renderDB();
+renderCatDB();
+
+const loaded = loadAll();
+if (!loaded) {
+  addWeek();
+  addWeek();
+}
+</script>
+</body>
+</html>
