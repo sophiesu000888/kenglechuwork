@@ -1,17 +1,29 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>御品菜單配置管理系統</title>
-<meta property="og:title" content="御品菜單配置管理系統">
-<meta property="og:description" content="健康餐與風味餐菜單排班配置工具">
+<title>ChiaYu Menu Manager</title>
+<meta property="og:title" content="ChiaYu Menu Manager">
+<meta property="og:description" content="ChiaYu Menu Manager">
 <meta property="og:type" content="website">
 <!-- SheetJS for Excel export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Playfair+Display:wght@700;900&display=swap');
 
 :root {
   --green-dark: #2e7d32;
@@ -30,11 +42,17 @@ body {
 
 h1 {
   text-align: center;
-  color: var(--green-dark);
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 14px;
-  letter-spacing: 3px;
+  font-family: 'Playfair Display', 'Georgia', serif;
+  background: linear-gradient(135deg, #2e7d32 0%, #66bb6a 50%, #2e7d32 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 5rem;
+  font-weight: 900;
+  margin-bottom: 18px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  filter: drop-shadow(0 2px 4px rgba(46,125,50,0.18));
 }
 
 .toolbar {
@@ -48,13 +66,9 @@ h1 {
 }
 .toolbar button:hover { opacity: 0.85; }
 
-/* 新增日期 → 健康餐地點的綠色 */
 .btn-add    { background: #66bb6a; color: #fff; }
-/* 匯出 Excel → 風味餐地點的藍色 */
 .btn-export { background: #42a5f5; color: #fff; }
-/* 自動儲存狀態 */
 .btn-save   { background: #ff9800; color: #fff; cursor: default !important; }
-/* 清除 */
 .btn-clear  { background: #c62828; color: #fff; }
 
 .schedule-area { display: flex; flex-direction: column; gap: 24px; }
@@ -93,25 +107,61 @@ h1 {
 table {
   border-collapse: collapse; width: 100%;
   min-width: 860px; font-size: 0.8rem;
+  border: none;
 }
-th, td { border: 1px solid var(--border); text-align: center; vertical-align: middle; }
+th, td { border: 1px solid rgba(255,255,255,0.35); text-align: center; vertical-align: middle; }
+/* 最外圈不要邊框 */
+table tr:first-child th,
+table tr:first-child td { border-top: none; }
+table tr:last-child th,
+table tr:last-child td { border-bottom: none; }
+table tr th:first-child,
+table tr td:first-child { border-left: none; }
+table tr th:last-child,
+table tr td:last-child { border-right: none; }
 
 .th-week   { background: #37474f; color: #fff; font-weight: 700; padding: 6px 8px; }
-.th-health { background: var(--green-dark); color: #fff; font-weight: 700; padding: 5px 8px; }
-.th-wind   { background: var(--blue-dark);  color: #fff; font-weight: 700; padding: 5px 8px; }
-.th-hloc   { background: #66bb6a; color: #fff; font-weight: 600; padding: 4px 6px; font-size: 0.78rem; }
-.th-wloc   { background: #42a5f5; color: #fff; font-weight: 600; padding: 4px 6px; font-size: 0.78rem; }
-.th-sub    { font-size: 0.72rem; font-weight: 500; padding: 3px 4px; }
-.th-sub-h  { background: #81c784; color: #fff; }
-.th-sub-w  { background: #64b5f6; color: #fff; }
+.th-health {
+  background: var(--green-dark,#2e7d32); color: #fff; font-weight: 800;
+  padding: 10px 8px; font-size: 1.05rem; letter-spacing: 4px;
+}
+.th-wind   {
+  background: var(--blue-dark,#1565c0);  color: #fff; font-weight: 800;
+  padding: 10px 8px; font-size: 1.05rem; letter-spacing: 4px;
+}
+.th-hloc   {
+  background: #2e7d32; color: #fff; font-weight: 700;
+  padding: 7px 8px; font-size: 0.88rem; letter-spacing: 2px;
+  border: none;
+}
+.th-hloc-light {
+  background: #66bb6a; color: #fff; font-weight: 700;
+  padding: 7px 8px; font-size: 0.88rem; letter-spacing: 2px;
+  border: none;
+}
+.th-wloc   {
+  background: #1565c0; color: #fff; font-weight: 700;
+  padding: 7px 8px; font-size: 0.88rem; letter-spacing: 2px;
+  border: none;
+}
+.th-wloc-light {
+  background: #42a5f5; color: #fff; font-weight: 700;
+  padding: 7px 8px; font-size: 0.88rem; letter-spacing: 2px;
+  border: none;
+}
+.th-sub    { font-size: 0.88rem; font-weight: 700; padding: 7px 8px; }
+.th-sub-h  { background: #388e3c; color: #fff; }
+.th-sub-h-light { background: #81c784; color: #fff; }
+.th-sub-w  { background: #1976d2; color: #fff; }
+.th-sub-w-light { background: #64b5f6; color: #fff; }
 
 .td-cat {
   background: #eceff1; color: #37474f; font-weight: 700;
   font-size: 0.82rem; padding: 5px 8px; white-space: nowrap; min-width: 52px;
 }
 
-.td-l1 { padding: 3px; min-width: 90px; }
-.td-l2 { padding: 3px; min-width: 92px; }
+.td-l1 { padding: 3px; min-width: 110px; }
+.td-l2 { padding: 3px; min-width: 110px; }
 
 .h-rice { background: #ffe0b2; }
 .h-rice-l2 { background: #fff3e0; }
@@ -149,8 +199,9 @@ select {
   cursor: pointer; transition: border-color 0.15s;
 }
 select:focus { outline: none; border-color: #43a047; }
-select.sel-l1 { font-weight: 600; }
-select.sel-l2 { font-size: 0.75rem; }
+select.sel-l1 { font-weight: 600; background-image: none; padding-right: 5px; border-color: transparent; }
+select.sel-l1:focus { border-color: transparent; }
+select.sel-l2 { font-size: 0.75rem; background-image: none; padding-right: 5px; }
 select.sel-l2:disabled {
   background-color: #f5f5f5; color: #bdbdbd;
   border-color: #e0e0e0; cursor: default;
@@ -175,63 +226,184 @@ select.sel-l2:disabled {
 }
 .db-panel h2 { font-size: 0.95rem; color: #37474f; margin-bottom: 10px; font-weight: 700; }
 .db-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.db-cat { border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; min-width: 110px; }
-.db-cat-title { color: #fff; font-size: 0.76rem; font-weight: 700; padding: 4px 8px; text-align: center; }
-.db-cat-items { padding: 5px 7px; font-size: 0.74rem; color: #455a64; display: flex; flex-direction: column; gap: 2px; max-height: 780px; overflow-y: auto; }
+.db-cat { border: 1px solid #e0e0e0; border-radius: 6px; overflow: visible; min-width: 110px; display: flex; flex-direction: column; }
+.db-cat-title { color: #fff; font-size: 0.76rem; font-weight: 700; padding: 4px 8px; text-align: center; border-radius: 5px 5px 0 0; }
+
+.db-cat-items {
+  padding: 5px 2px 5px 7px; font-size: 0.74rem; color: #455a64;
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 260px;
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: #90a4ae #eceff1;
+  border-radius: 0 0 5px 5px;
+}
+.db-cat-items::-webkit-scrollbar { width: 6px; }
+.db-cat-items::-webkit-scrollbar-track { background: #eceff1; border-radius: 3px; }
+.db-cat-items::-webkit-scrollbar-thumb { background: #90a4ae; border-radius: 3px; }
+.db-cat-items::-webkit-scrollbar-thumb:hover { background: #607d8b; }
 .db-item { padding: 2px 4px; border-radius: 3px; margin-bottom: 1px; font-size: 0.73rem; }
+
+/* 白色分類加細框（避免跟背景混在一起） */
+.db-item[style*="#FFFFFF"],
+.db-item[style*="#ffffff"],
+.db-item[style*="rgb(255, 255, 255)"] {
+  border: 1px solid #cfd8dc;
+}
+
+/* ===== 管理面板 ===== */
+.mgmt-panel { border: 2px solid #b0bec5; }
+.mgmt-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.mgmt-tab {
+  padding: 6px 16px; border: 1.5px solid #b0bec5; border-radius: 6px;
+  background: #eceff1; color: #37474f; font-family: inherit; font-size: 0.84rem;
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.mgmt-tab:hover { background: #cfd8dc; }
+.mgmt-tab.active { background: #37474f; color: #fff; border-color: #37474f; }
+.mgmt-section { }
+.mgmt-action-btn {
+  padding: 6px 14px; border: none; border-radius: 5px;
+  color: #fff; font-family: inherit; font-size: 0.82rem;
+  font-weight: 600; cursor: pointer; transition: opacity 0.15s; white-space: nowrap;
+}
+.mgmt-action-btn:hover { opacity: 0.85; }
+.mgmt-items-list {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 8px;
+  background: #f5f7f9; border-radius: 6px; min-height: 40px; border: 1px solid #e0e0e0;
+}
+.mgmt-item-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px 3px 10px; border-radius: 16px;
+  font-size: 0.78rem; font-weight: 500; cursor: default;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+.mgmt-item-chip .chip-del {
+  background: none; border: none; color: inherit; opacity: 0.55;
+  cursor: pointer; font-size: 0.7rem; padding: 0 0 0 2px; line-height: 1;
+  font-family: inherit;
+}
+.mgmt-item-chip .chip-del:hover { opacity: 1; }
+.mgmt-rowcats-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; background: #f5f7f9; border-radius: 6px; min-height: 36px; border: 1px solid #e0e0e0; margin-bottom: 6px; }
+.rowcat-chip { display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:16px;font-size:0.78rem;font-weight:600;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9; }
+.rowcat-chip .chip-del { background:none;border:none;color:#1565c0;opacity:0.5;cursor:pointer;font-size:0.7rem;padding:0 0 0 2px; }
+.rowcat-chip .chip-del:hover { opacity:1; }
 
 /* ── 手機版優化 ── */
 @media (max-width: 600px) {
-  body { padding: 10px 6px; }
+  body { padding: 8px 6px; }
 
-  h1 { font-size: 1.1rem; letter-spacing: 1px; margin-bottom: 10px; }
+  h1 { font-size: 1.9rem; letter-spacing: 1px; margin-bottom: 10px; }
 
-  .toolbar { gap: 6px; }
-  .toolbar button { padding: 8px 12px; font-size: 0.82rem; flex: 1 1 auto; min-width: 110px; }
+  /* ── Toolbar：主功能大按鈕 + 次要功能收折 ── */
+  .toolbar {
+    gap: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .toolbar button { padding: 11px 8px; font-size: 0.82rem; width: 100%; border-radius: 8px; }
+  /* 新增日期佔滿第一列 */
+  .toolbar .btn-add { grid-column: 1 / -1; font-size: 0.92rem; padding: 13px 8px; }
+  /* 儲存狀態列小字靜態提示，不佔太多空間 */
+  .toolbar .btn-save {
+    grid-column: 1 / -1;
+    font-size: 0.72rem; padding: 6px 8px;
+    background: #e8f5e9; color: #388e3c;
+    border-radius: 6px; cursor: default !important;
+  }
+  /* 清除按鈕最後獨立一行，紅色警示 */
+  .toolbar .btn-clear { grid-column: 1 / -1; font-size: 0.82rem; padding: 10px; }
 
+  /* Week title bar wraps better */
   .week-titlebar { gap: 6px; padding: 8px 10px; }
-  .week-label { font-size: 0.82rem; }
-  .week-date { font-size: 0.78rem; padding: 4px 6px; flex: 1 1 auto; }
-  .week-day { font-size: 0.88rem; min-width: 40px; padding: 3px 5px; }
-  .btn-del-week { padding: 5px 10px; font-size: 0.78rem; }
+  .week-label { font-size: 0.8rem; }
+  .week-date { font-size: 0.78rem; padding: 4px 6px; flex: 1 1 auto; min-width: 0; }
+  .week-day { font-size: 0.85rem; min-width: 38px; padding: 3px 5px; }
+  .btn-del-week { padding: 5px 10px; font-size: 0.78rem; margin-left: auto; }
 
-  /* 手機版：表格橫向捲動提示 */
+  /* Horizontal scroll hint */
   .tbl-wrap::before {
     content: '← 左右滑動查看完整表格 →';
-    display: block;
-    text-align: center;
-    font-size: 0.72rem;
-    color: #90a4ae;
-    padding: 4px 0;
-    background: #f5f5f5;
+    display: block; text-align: center;
+    font-size: 0.7rem; color: #90a4ae;
+    padding: 4px 0; background: #f5f5f5;
+    letter-spacing: 0.5px;
   }
 
-  table { font-size: 0.72rem; min-width: 700px; }
-  .td-l1 { min-width: 70px; }
-  .td-l2 { min-width: 72px; }
-  select { font-size: 0.7rem; padding: 2px 14px 2px 3px; }
-  .td-cat { font-size: 0.74rem; padding: 4px 5px; min-width: 42px; }
+  table { font-size: 0.7rem; min-width: 620px; }
+  .td-l1 { min-width: 80px; }
+  .td-l2 { min-width: 80px; }
+  select { font-size: 0.68rem; padding: 2px 12px 2px 3px; }
+  .td-cat { font-size: 0.72rem; padding: 4px 4px; min-width: 38px; max-width: 52px; }
 
-  .loc-sel { font-size: 0.72rem !important; max-width: 60px !important; }
+  /* Control bar buttons：新增地點按鈕各佔半寬 */
+  .ctrlBar-btn { padding: 10px 8px !important; font-size: 0.8rem !important; flex: 1 1 45%; border-radius: 7px !important; }
 
-  .ctrlBar-btn { padding: 6px 10px !important; font-size: 0.76rem !important; }
+  /* DB panel: show 2 columns on mobile */
+  .db-panel { padding: 10px 8px; }
+  .db-panel h2 { font-size: 0.85rem; }
+  .db-grid { gap: 6px; display: grid; grid-template-columns: repeat(2, 1fr); }
+  .db-cat { min-width: 0; width: 100%; }
+  .db-cat-items { max-height: 160px; font-size: 0.7rem; }
 
-  .db-panel { padding: 12px 10px; }
-  .db-panel h2 { font-size: 0.88rem; }
-  .db-grid { gap: 6px; }
-  .db-cat { min-width: 90px; }
+  /* ── 管理面板手機版 ── */
+  /* Tab 改成等寬 3 欄，文字精簡 */
+  .mgmt-tabs { gap: 4px; display: grid; grid-template-columns: repeat(3,1fr); }
+  .mgmt-tab {
+    padding: 9px 4px; font-size: 0.75rem;
+    flex: unset; text-align: center;
+    border-radius: 7px; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
 
-  .save-toast { bottom: 12px; right: 10px; padding: 6px 14px; font-size: 0.78rem; }
+  /* 管理區塊內 select + 按鈕組：垂直堆疊，全寬 */
+  .mgmt-section > div[style*="display:flex"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .mgmt-section select[style*="width:auto"] {
+    width: 100% !important;
+    font-size: 0.9rem !important;
+    padding: 9px 28px 9px 10px !important;
+  }
+  /* 按鈕全寬，更易點擊 */
+  .mgmt-action-btn {
+    width: 100%; padding: 11px 10px;
+    font-size: 0.84rem; border-radius: 8px;
+    text-align: center;
+  }
+  /* input 全寬 */
+  .mgmt-section input[type="text"] {
+    width: 100% !important; min-width: 0 !important;
+    font-size: 0.9rem !important; padding: 9px 10px !important;
+    border-radius: 7px !important;
+  }
+  /* 顏色設定列 */
+  .mgmt-section > div[style*="顏色設定"],
+  .mgmt-section > div:has(#mgmt-color-bg) {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    align-items: center !important;
+  }
+
+  /* chip 清單更大間距 */
+  .mgmt-items-list { gap: 7px; padding: 10px; }
+  .mgmt-item-chip { font-size: 0.82rem; padding: 5px 12px; }
+  .rowcat-chip { font-size: 0.82rem; padding: 5px 12px; }
+
+  .save-toast { bottom: 12px; right: 10px; padding: 7px 14px; font-size: 0.78rem; }
 }
 </style>
 </head>
 <body>
 
-<h1>🍱 御品菜單配置管理系統</h1>
+<h1>ChiaYu Menu Manager</h1>
 
 <div class="toolbar">
   <button class="btn-add"    onclick="addWeek()">➕ 新增日期</button>
-  <button class="btn-export" onclick="exportExcel()">📊 匯出 Excel</button>
+  <button class="btn-export" onclick="exportHTML(false)">📄 匯出 HTML（含類別）</button>
+  <button class="btn-export" style="background:#26a69a;" onclick="exportHTML(true)">📋 匯出 HTML（僅品項）</button>
   <button class="btn-save"   id="saveStatus">💾 自動儲存中…</button>
   <button class="btn-clear"  onclick="clearAll()">🗑️ 清除全部</button>
 </div>
@@ -239,25 +411,103 @@ select.sel-l2:disabled {
 <div class="schedule-area" id="scheduleArea"></div>
 
 <div class="db-panel">
-  <h2>📦 食材依顏色分類</h2>
+  <h2>📦 食材依顏色分類<span style="font-size:0.74rem;color:#b0bec5;font-weight:400;margin-left:4px;">（可上下滑動查看更多）</span></h2>
   <div class="db-grid" id="dbGrid"></div>
 </div>
 
 <div class="db-panel" style="margin-top:12px;">
-  <h2>📋 食材依類別分類</h2>
+  <h2>📋 食材依類別分類<span style="font-size:0.74rem;color:#b0bec5;font-weight:400;margin-left:4px;">（可上下滑動查看更多）</span></h2>
   <div class="db-grid" id="catGrid"></div>
+</div>
+
+<!-- ===== 管理面板 ===== -->
+<div class="db-panel mgmt-panel" style="margin-top:16px;">
+  <h2>⚙️ 資料庫管理</h2>
+  <p style="font-size:0.8rem;color:#78909c;margin-bottom:12px;">在此新增或刪除食材品項、主菜品項與顏色分組，變更會即時反映到菜單下拉選單中。</p>
+
+  <!-- Tab 切換 -->
+  <div class="mgmt-tabs">
+    <button class="mgmt-tab active" onclick="switchMgmtTab('items')">🥦 類別品項</button>
+    <button class="mgmt-tab" onclick="switchMgmtTab('colors')">🎨 顏色分組</button>
+    <button class="mgmt-tab" onclick="switchMgmtTab('rowcats')">📑 列類別設定</button>
+  </div>
+
+  <!-- 類別品項管理 -->
+  <div id="mgmt-items" class="mgmt-section">
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+      <select id="mgmt-cat-sel" style="width:auto;padding:6px 28px 6px 10px;font-size:0.85rem;" onchange="renderMgmtItems()">
+        <!-- 動態填入 -->
+      </select>
+      <button class="mgmt-action-btn" style="background:#43a047;" onclick="addNewCategory()">➕ 新增類別</button>
+      <button class="mgmt-action-btn" style="background:#c62828;" onclick="deleteCurrentCategory()">🗑️ 刪除此類別</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <input id="mgmt-item-input" type="text" placeholder="輸入新品項名稱" style="flex:1;min-width:140px;padding:6px 10px;border:1px solid #b0bec5;border-radius:5px;font-family:inherit;font-size:0.85rem;" onkeydown="if(event.key==='Enter')addItemToCategory()">
+      <button class="mgmt-action-btn" style="background:#1976d2;" onclick="addItemToCategory()">➕ 新增品項</button>
+    </div>
+    <div id="mgmt-items-list" class="mgmt-items-list"></div>
+  </div>
+
+  <!-- 顏色分組管理 -->
+  <div id="mgmt-colors" class="mgmt-section" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+      <select id="mgmt-color-sel" style="width:auto;padding:6px 28px 6px 10px;font-size:0.85rem;" onchange="renderMgmtColorItems()">
+        <!-- 動態填入 -->
+      </select>
+      <button class="mgmt-action-btn" style="background:#43a047;" onclick="addNewColorGroup()">➕ 新增顏色組</button>
+      <button class="mgmt-action-btn" style="background:#c62828;" onclick="deleteCurrentColorGroup()">🗑️ 刪除此顏色組</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+      <input id="mgmt-color-item-input" type="text" placeholder="輸入食材名稱" style="flex:1;min-width:140px;padding:6px 10px;border:1px solid #b0bec5;border-radius:5px;font-family:inherit;font-size:0.85rem;" onkeydown="if(event.key==='Enter')addItemToColorGroup()">
+      <button class="mgmt-action-btn" style="background:#1976d2;" onclick="addItemToColorGroup()">➕ 新增食材</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;font-size:0.82rem;color:#546e7a;">
+      <span>顏色設定：</span>
+      <label>背景色 <input type="color" id="mgmt-color-bg" value="#4cd964" style="width:40px;height:28px;border:none;cursor:pointer;border-radius:4px;"></label>
+      <label>文字色 <input type="color" id="mgmt-color-fg" value="#1a3a00" style="width:40px;height:28px;border:none;cursor:pointer;border-radius:4px;"></label>
+      <label>標題背景 <input type="color" id="mgmt-color-titlebg" value="#27ae60" style="width:40px;height:28px;border:none;cursor:pointer;border-radius:4px;"></label>
+      <button class="mgmt-action-btn" style="background:#546e7a;font-size:0.78rem;" onclick="applyColorGroupColors()">套用顏色</button>
+    </div>
+    <div id="mgmt-color-items-list" class="mgmt-items-list"></div>
+  </div>
+
+  <!-- 列類別設定 -->
+  <div id="mgmt-rowcats" class="mgmt-section" style="display:none;">
+    <p style="font-size:0.78rem;color:#90a4ae;margin-bottom:10px;">設定每個列（主菜/副主菜/1/2…）可選用哪些類別。</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+      <select id="mgmt-row-sel" style="width:auto;padding:6px 28px 6px 10px;font-size:0.85rem;" onchange="renderMgmtRowCats()">
+        <!-- 動態填入 -->
+      </select>
+    </div>
+    <div id="mgmt-rowcats-list" class="mgmt-rowcats-list"></div>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <select id="mgmt-rowcat-add-sel" style="width:auto;padding:6px 28px 6px 10px;font-size:0.85rem;">
+        <!-- 動態填入 -->
+      </select>
+      <button class="mgmt-action-btn" style="background:#1976d2;" onclick="addCatToRow()">➕ 加入此類別</button>
+    </div>
+  </div>
 </div>
 
 <div class="save-toast" id="saveToast">✅ 已自動儲存</div>
 
 <script>
+// ===== 共用 Helper =====
+function getRowStyles(row) {
+  const hS  = row==="主菜"?"h-main":row==="副主菜"?"h-sub":row==="米飯"?"h-rice":"h-item";
+  const hS2 = row==="主菜"?"h-main-l2":row==="副主菜"?"h-sub-l2":row==="米飯"?"h-rice-l2":"h-item-l2";
+  const wS  = row==="主菜"?"w-main":row==="副主菜"?"w-sub":row==="米飯"?"w-rice":"w-item";
+  const wS2 = row==="主菜"?"w-main-l2":row==="副主菜"?"w-sub-l2":row==="米飯"?"w-rice-l2":"w-item-l2";
+  return [hS, hS2, wS, wS2];
+}
+
 // ===== 食材顏色對照 =====
 const FOOD_COLOR = {};
 const COLOR_GROUPS = {
   red:    { label:"紅", bg:"#ff3b30", fg:"#fff", titleBg:"#c0392b", items:["紅椒","枸杞","小番茄","紅地瓜","紅蘿蔔","紅蘿蔔球"] },
   yellow: { label:"黃", bg:"#ffee00", fg:"#333", titleBg:"#d4a017", items:["黃豆芽","豆干","豆皮","豆腸","麵輪","玉米","玉米筍","南瓜","栗子","白木耳","黃椒","銀杏","白靈芝菇","金針菇","洋菇片","猴頭菇","珊瑚菇","黃地瓜","牛蒡"] },
   green:  { label:"綠", bg:"#4cd964", fg:"#1a3a00", titleBg:"#27ae60", items:["油菜","青江菜","蚵白菜","小白菜","菠菜","芥菜","地瓜葉","芥蘭菜","龍鬚菜","A菜","芹菜","青花椰","敏豆","毛豆莢","毛豆仁","長豆","鷹嘴豆","大黃瓜","小黃瓜","絲瓜","佛手瓜","胡瓜","秋葵","青椒"] },
-  white:  { label:"白", bg:"#f0f0f0", fg:"#333", titleBg:"#90a4ae", items:["高麗菜","大白菜","豆芽菜","白花椰","板豆腐","白干絲","水煮蛋","苦瓜","冬瓜","洋地瓜","杏鮑菇","美白菇","秀珍菇","馬鈴薯","山藥","白蘿蔔","蓮藕","白米","小米","藜麥","糙米"] },
+  white:  { label:"白", bg:"#FFFFFF", fg:"#333", titleBg:"#90a4ae", items:["高麗菜","大白菜","豆芽菜","白花椰","板豆腐","白干絲","水煮蛋","苦瓜","冬瓜","洋地瓜","杏鮑菇","美白菇","秀珍菇","馬鈴薯","山藥","白蘿蔔","蓮藕","白米","小米","藜麥","糙米"] },
   black:  { label:"黑", bg:"#555555", fg:"#fff", titleBg:"#222", items:["黑豆","花生","木耳","雲耳","海帶根","海帶結","海帶絲","鮮香菇","鴻禧菇","草菇"] },
   purple: { label:"紫", bg:"#bf5af2", fg:"#fff", titleBg:"#8e44ad", items:["紫地瓜","紫米","五穀"] },
   pink:   { label:"粉", bg:"#ff69b4", fg:"#fff", titleBg:"#c2185b", items:["甜菜根"] }
@@ -269,19 +519,19 @@ Object.entries(COLOR_GROUPS).forEach(([key, g]) => {
 
 // ===== 食材資料庫 =====
 const DB = {
-  "健康餐主菜": ["-","雙拼舒肥雞胸","紐澳良腿排","蔥燒豬五花","義式雞胸","滑蛋豬","醬烤梅花豬","洋蔥肉片","蒜泥白肉","韓式肉片","蒜香烤五花","照燒腿排","黑胡椒胸丁","義式腿排"],
-  "風味餐主菜": ["-","鳳梨糖醋雞","烤鴨","油雞","沙茶肉片","北菇滑雞","川椒雞","叉燒/油雞","韓式炸雞","滷排骨","紅糟肉","蜜汁雞腿","炸排骨","烤鴨/叉燒","蔗香腿排","醬烤梅花豬","香酥雞排","鹹豬肉"],
-  "副主菜":  ["-","士林香腸","雞捲","港點","魚丸","冬粉","杏鮑菇玉米筍"],
-  "米飯":    ["-","白米","紫米","小米","藜麥","糙米","五穀"],
-  "白葉菜":  ["-","高麗菜","大白菜","豆芽菜","黃豆芽","白花椰"],
-  "綠葉菜":  ["-","油菜","青江菜","蚵白菜","小白菜","菠菜","芥菜","地瓜葉","芥蘭菜","龍鬚菜","A菜","芹菜","青花椰"],
-  "蛋白質":  ["-","敏豆","毛豆莢","毛豆仁","長豆","鷹嘴豆","黑豆","豆干","板豆腐","豆皮","枸杞","花生","白干絲","銀杏","麻婆豆腐","水煮蛋","麵輪"],
-  "菇":      ["-","杏鮑菇","鮮香菇","鴻禧菇","美白菇","白靈芝菇","金針菇","秀珍菇","洋菇片","草菇","猴頭菇","珊瑚菇"],
-  "瓜果":    ["-","大黃瓜","小黃瓜","苦瓜","絲瓜","冬瓜","佛手瓜","胡瓜","秋葵","小番茄","大頭菜"],
-  "根莖":    ["-","馬鈴薯","紅地瓜","黃地瓜","紫地瓜","山藥","芋頭","紅蘿蔔","白蘿蔔","蓮藕","牛蒡","甜菜根","紅蘿蔔球","洋地瓜"],
-  "海帶":    ["-","海帶根","海帶結","海帶絲"],
-  "其他":    ["-","玉米","玉米筍","南瓜","木耳","雲耳","白木耛","栗子","紅椒","黃椒","青椒","銀杏"],
-  "輔料":    ["-","香鬆米","海苔米","義式香","紅白椿"]
+  "健康餐主菜": ["雙拼舒肥雞胸","紐澳良腿排","蔥燒豬五花","義式雞胸","滑蛋豬肉","醬烤梅花豬","洋蔥肉片","蒜泥白肉","韓式肉片","蒜香烤五花","照燒腿排","黑胡椒胸丁","義式腿排"],
+  "風味餐主菜": ["鳳梨糖醋雞","深井脆皮掛爐烤鴨","鳳城玫瑰油雞","沙茶肉片","北菇滑雞","川椒雞","叉燒/油雞","韓式炸雞","古早味滷排骨","古早紅糟肉","蜜汁雞腿","炸排骨","烤鴨/叉燒","蔗香腿排","醬烤梅花豬","香酥雞排","鹹豬肉"],
+  "副主菜":  ["士林香腸","雞捲"],
+  "米飯":    ["白米","紫米","小米","藜麥","糙米","五穀"],
+  "白葉菜":  ["高麗菜","大白菜","豆芽菜","黃豆芽","白花椰"],
+  "綠葉菜":  ["油菜","青江菜","蚵白菜","小白菜","菠菜","芥菜","地瓜葉","芥蘭菜","龍鬚菜","A菜","芹菜","青花椰"],
+  "蛋白質":  ["敏豆","毛豆莢","毛豆仁","長豆","鷹嘴豆","黑豆","豆干","板豆腐","豆皮","花生","白干絲","水煮蛋","麵輪"],
+  "菇":      ["木耳","雲耳","白木耳","杏鮑菇","鮮香菇","鴻禧菇","美白菇","白靈芝菇","金針菇","秀珍菇","洋菇片","草菇","猴頭菇","珊瑚菇"],
+  "瓜果":    ["大黃瓜","小黃瓜","苦瓜","絲瓜","冬瓜","佛手瓜","胡瓜","秋葵","小番茄","大頭菜","玉米","玉米筍","南瓜","紅甜椒","黃甜椒","青椒"],
+  "根莖":    ["馬鈴薯","紅地瓜","黃地瓜","紫地瓜","山藥","芋頭","紅蘿蔔","白蘿蔔","蓮藕","牛蒡","甜菜根","紅蘿蔔球","洋地瓜","栗子","銀杏"],
+  "海帶":    ["海帶根","海帶結","海帶絲"],
+  "其他":    ["冬粉","杏鮑菇玉米筍","港點","魚丸","麻婆豆腐"],
+  "輔料":    ["香鬆粉","海苔粉","義式香料","紅白梅粉","枸杞"]
 };
 
 const ROW_CATS = {
@@ -304,9 +554,8 @@ const PRESET_LOCS = ["P7","3C","揚明","休斯微"];
 
 let weekCount = 0;
 let saveTimer = null;
-let weekDataMap = {}; // wid -> { hLocs, wLocs, date }
+let weekDataMap = {};
 
-// ===== 自動儲存 =====
 const STORAGE_KEY = "yupin_menu_v2";
 
 function showSaveToast() {
@@ -332,7 +581,6 @@ function saveAll() {
     const hLocs = info.hLocs || [];
     const wLocs = info.wLocs || [];
 
-    // 讀取地點選單目前的值
     const locSels = [...block.querySelectorAll(".loc-sel")];
     const locInps = [...block.querySelectorAll(".loc-inp")];
     let locIdx = 0;
@@ -347,7 +595,6 @@ function saveAll() {
       return s.value === "__custom__" ? (inp?.value || "") : s.value;
     });
 
-    // 讀取所有 select 值
     const cells = [];
     block.querySelectorAll("table tr").forEach((tr, rIdx) => {
       const catTd = tr.querySelector(".td-cat");
@@ -388,28 +635,23 @@ function loadAll() {
       const block = buildWeek(weekCount, item.hLocs, item.wLocs);
       document.getElementById("scheduleArea").appendChild(block);
 
-      // 恢復日期
       const di = block.querySelector(".week-date");
       if (di && item.date) {
         di.value = item.date;
         di.dispatchEvent(new Event("change"));
       }
 
-      // 恢復地點選單
       const locSels = [...block.querySelectorAll(".loc-sel")];
       const locInps = [...block.querySelectorAll(".loc-inp")];
       const allLocs = [...(item.hLocs||[]), ...(item.wLocs||[])];
       allLocs.forEach((loc, i) => {
         const s = locSels[i]; const inp = locInps[i];
         if (!s) return;
-        if (PRESET_LOCS.includes(loc)) {
-          s.value = loc; if(inp) { inp.style.display="none"; inp.value=loc; }
-        } else {
-          s.value = "__custom__"; if(inp) { inp.style.display="block"; inp.value=loc; }
-        }
+        // 全部預設為自訂輸入模式
+        s.style.display = "none";
+        if(inp) { inp.style.display="flex"; inp.value=loc; }
       });
 
-      // 恢復儲存格
       const rowMap = {};
       block.querySelectorAll("table tr").forEach(tr => {
         const catTd = tr.querySelector(".td-cat");
@@ -440,15 +682,23 @@ function loadAll() {
   }
 }
 
-// ===== 工具函式 =====
 function getFoodColors(item) {
   const key = FOOD_COLOR[item];
   if (!key) return null;
   return { bg: COLOR_GROUPS[key].bg, fg: COLOR_GROUPS[key].fg || "#333" };
 }
 
-function makeColPair(rowKey, defaultStyle, defaultStyleL2) {
-  const cats = ROW_CATS[rowKey] || [];
+function makeColPair(rowKey, defaultStyle, defaultStyleL2, side) {
+  let cats = ROW_CATS[rowKey] || [];
+
+  // 主菜列依健康/風味餐欄位過濾第一層類別
+  if (rowKey === "主菜") {
+    if (side === "h") {
+      cats = cats.filter(c => c === "-" || c === "健康餐主菜");
+    } else if (side === "w") {
+      cats = cats.filter(c => c === "-" || c === "風味餐主菜");
+    }
+  }
 
   const sel1 = document.createElement("select");
   sel1.className = "sel-l1";
@@ -492,7 +742,7 @@ function makeColPair(rowKey, defaultStyle, defaultStyleL2) {
 
   sel2.addEventListener("change", () => {
     const item = sel2.value;
-    if (!item || item==="-") {
+    if (!item || item==="-" || item==="-- 品項 --") {
       td2.style.background=""; td2.style.color="";
       sel2.style.background=""; sel2.style.color="";
       sel2.style.fontWeight=""; sel2.style.borderColor="";
@@ -506,7 +756,7 @@ function makeColPair(rowKey, defaultStyle, defaultStyleL2) {
       } else {
         td2.style.background=""; td2.style.color="";
         sel2.style.background=""; sel2.style.color="";
-        sel2.style.fontWeight=""; sel2.style.borderColor="";
+        sel2.style.fontWeight="600"; sel2.style.borderColor="transparent";
         td2.className=`td-l2 ${defaultStyleL2}`;
       }
     }
@@ -517,43 +767,69 @@ function makeColPair(rowKey, defaultStyle, defaultStyleL2) {
   return [td1, td2];
 }
 
-function makeLocTh(loc, type, onDelete) {
+function makeLocTh(loc, type, onDelete, locIndex) {
   const th = document.createElement("th");
-  th.className = type==="h" ? "th-hloc" : "th-wloc";
+  // 奇數索引(0,2,4...)用深色，偶數索引(1,3...)用淺色
+  const isDark = (locIndex % 2 === 0);
+  if (type === "h") {
+    th.className = isDark ? "th-hloc" : "th-hloc-light";
+  } else {
+    th.className = isDark ? "th-wloc" : "th-wloc-light";
+  }
   th.colSpan = 2;
-
-  const isPreset = PRESET_LOCS.includes(loc);
+  // 移除地點欄的左右邊框
+  th.style.borderLeft = "none";
+  th.style.borderRight = "none";
 
   const wrap = document.createElement("div");
-  wrap.style.cssText = "display:flex;align-items:center;justify-content:center;gap:3px;";
+  wrap.style.cssText = "display:flex;align-items:center;justify-content:center;gap:4px;";
+
+  // 地點文字樣式：無框線、放大、置中，副標題感
+  const SHARED_LOC_STYLE = "background:transparent;border:none;outline:none;color:#fff;font-size:0.92rem;font-weight:700;letter-spacing:2px;text-align:center;max-width:100px;cursor:pointer;font-family:inherit;";
 
   const sel = document.createElement("select");
   sel.className = "loc-sel";
-  sel.style.cssText = "background:transparent;border:1px solid rgba(255,255,255,0.6);color:#fff;border-radius:4px;padding:2px 3px;font-size:0.78rem;font-weight:700;max-width:75px;cursor:pointer;";
+  // 預設隱藏 select，全部改為自訂輸入
+  sel.style.cssText = SHARED_LOC_STYLE + "display:none;";
   sel.innerHTML = PRESET_LOCS.map(p=>`<option value="${p}" ${p===loc?"selected":""}>${p}</option>`).join("") +
-    `<option value="__custom__" ${!isPreset?"selected":""}>自訂…</option>`;
+    `<option value="__custom__">自訂</option>`;
 
   const inp = document.createElement("input");
   inp.type = "text";
   inp.className = "loc-inp";
   inp.value = loc;
   inp.placeholder = "輸入名稱";
-  inp.style.cssText = `display:${!isPreset?"block":"none"};width:58px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.6);color:#fff;border-radius:4px;padding:2px 4px;font-size:0.78rem;font-weight:700;`;
+  // 預設顯示 input（全改為自訂）
+  inp.style.cssText = `display:flex;width:80px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.5);color:#fff;font-size:0.92rem;font-weight:700;letter-spacing:2px;text-align:center;font-family:inherit;outline:none;`;
+
+  inp.addEventListener("dblclick", () => {
+    inp.style.display = "none";
+    sel.style.display = "";
+    sel.value = PRESET_LOCS[0];
+    scheduleAutoSave();
+  });
 
   sel.addEventListener("change", () => {
     if (sel.value==="__custom__") {
-      inp.style.display="block"; inp.focus();
+      sel.style.display = "none";
+      inp.style.display = "flex";
+      inp.value = "";
+      inp.focus();
     } else {
-      inp.style.display="none"; inp.value=sel.value;
+      inp.style.display = "none";
+      inp.value = sel.value;
     }
     scheduleAutoSave();
   });
   inp.addEventListener("input", scheduleAutoSave);
 
+  // 簡約刪除按鈕：低調融入背景
   const delBtn = document.createElement("button");
   delBtn.textContent = "✕";
   delBtn.title = "刪除此欄";
-  delBtn.style.cssText = "background:rgba(255,80,80,0.75);border:none;border-radius:3px;color:#fff;font-size:0.68rem;padding:2px 5px;cursor:pointer;line-height:1;";
+  delBtn.style.cssText = "background:transparent;border:none;color:rgba(255,255,255,0.4);font-size:0.65rem;padding:2px 4px;cursor:pointer;line-height:1;transition:color 0.15s;";
+  delBtn.addEventListener("mouseenter", () => { delBtn.style.color = "rgba(255,255,255,0.85)"; });
+  delBtn.addEventListener("mouseleave", () => { delBtn.style.color = "rgba(255,255,255,0.4)"; });
   delBtn.addEventListener("click", onDelete);
 
   wrap.appendChild(sel); wrap.appendChild(inp); wrap.appendChild(delBtn);
@@ -566,7 +842,6 @@ function buildWeek(weekNum, initHLocs, initWLocs) {
   let hLocs = initHLocs ? [...initHLocs] : [...DEFAULT_HEALTH_LOCS];
   let wLocs = initWLocs ? [...initWLocs] : [...DEFAULT_WIND_LOCS];
 
-  // 記錄到 map
   weekDataMap[wid] = { hLocs, wLocs };
 
   const block = document.createElement("div");
@@ -633,11 +908,11 @@ function buildWeek(weekNum, initHLocs, initWLocs) {
 
     const thH = document.createElement("th");
     thH.className="th-health"; thH.colSpan=hLocs.length*2;
-    thH.textContent="▶▶▶ 健康餐 ◀◀◀"; hr1.appendChild(thH);
+    thH.textContent="【健康餐】"; hr1.appendChild(thH);
 
     const thW = document.createElement("th");
     thW.className="th-wind"; thW.colSpan=wLocs.length*2;
-    thW.textContent="▶▶▶ 風味餐 ◀◀◀"; hr1.appendChild(thW);
+    thW.textContent="【風味餐】"; hr1.appendChild(thW);
 
     const hr2 = tbl.insertRow();
     hLocs.forEach((loc, i) => {
@@ -645,33 +920,42 @@ function buildWeek(weekNum, initHLocs, initWLocs) {
         if (hLocs.length<=1) { alert("至少需保留一個健康餐地點"); return; }
         if (!confirm(`刪除「${loc}」欄位？`)) return;
         hLocs.splice(i,1); rebuildTable(); scheduleAutoSave();
-      }));
+      }, i));
     });
     wLocs.forEach((loc, i) => {
       hr2.appendChild(makeLocTh(loc, "w", () => {
         if (wLocs.length<=1) { alert("至少需保留一個風味餐地點"); return; }
         if (!confirm(`刪除「${loc}」欄位？`)) return;
         wLocs.splice(i,1); rebuildTable(); scheduleAutoSave();
-      }));
+      }, i));
     });
 
     const hr3 = tbl.insertRow();
-    hLocs.forEach(() => ["類別","品項"].forEach(l => {
-      const th=document.createElement("th"); th.className="th-sub th-sub-h"; th.textContent=l; hr3.appendChild(th);
+    hLocs.forEach((_, i) => ["類別","品項"].forEach(l => {
+      const th=document.createElement("th");
+      th.className = "th-sub " + (i % 2 === 0 ? "th-sub-h" : "th-sub-h-light");
+      th.textContent=l; hr3.appendChild(th);
     }));
-    wLocs.forEach(() => ["類別","品項"].forEach(l => {
-      const th=document.createElement("th"); th.className="th-sub th-sub-w"; th.textContent=l; hr3.appendChild(th);
+    wLocs.forEach((_, i) => ["類別","品項"].forEach(l => {
+      const th=document.createElement("th");
+      th.className = "th-sub " + (i % 2 === 0 ? "th-sub-w" : "th-sub-w-light");
+      th.textContent=l; hr3.appendChild(th);
     }));
 
     ROWS.forEach(row => {
       const tr = tbl.insertRow();
-      const tdCat=document.createElement("td"); tdCat.className="td-cat"; tdCat.textContent=row; tr.appendChild(tdCat);
-      const hS  = row==="主菜"?"h-main":row==="副主菜"?"h-sub":row==="米飯"?"h-rice":"h-item";
-      const hS2 = row==="主菜"?"h-main-l2":row==="副主菜"?"h-sub-l2":row==="米飯"?"h-rice-l2":"h-item-l2";
-      const wS  = row==="主菜"?"w-main":row==="副主菜"?"w-sub":row==="米飯"?"w-rice":"w-item";
-      const wS2 = row==="主菜"?"w-main-l2":row==="副主菜"?"w-sub-l2":row==="米飯"?"w-rice-l2":"w-item-l2";
-      hLocs.forEach(()=>{ const [t1,t2]=makeColPair(row,hS,hS2); tr.appendChild(t1); tr.appendChild(t2); });
-      wLocs.forEach(()=>{ const [t1,t2]=makeColPair(row,wS,wS2); tr.appendChild(t1); tr.appendChild(t2); });
+      const tdCat = document.createElement("td");
+      tdCat.className = "td-cat";
+      tdCat.textContent = row;
+      // 字數多時自動縮小字體
+      const len = row.length;
+      if (len >= 5) tdCat.style.fontSize = "0.6rem";
+      else if (len === 4) tdCat.style.fontSize = "0.7rem";
+      else if (len === 3) tdCat.style.fontSize = "0.76rem";
+      tr.appendChild(tdCat);
+      const [hS, hS2, wS, wS2] = getRowStyles(row);
+      hLocs.forEach(()=>{ const [t1,t2]=makeColPair(row,hS,hS2,"h"); tr.appendChild(t1); tr.appendChild(t2); });
+      wLocs.forEach(()=>{ const [t1,t2]=makeColPair(row,wS,wS2,"w"); tr.appendChild(t1); tr.appendChild(t2); });
     });
 
     wrap.appendChild(ctrlBar); wrap.appendChild(tbl);
@@ -682,7 +966,6 @@ function buildWeek(weekNum, initHLocs, initWLocs) {
   return block;
 }
 
-// ===== 主要功能 =====
 function addWeek() {
   weekCount++;
   const block = buildWeek(weekCount);
@@ -705,76 +988,191 @@ function clearAll() {
   document.getElementById("saveStatus").textContent = "💾 自動儲存中…";
 }
 
-// ===== 匯出 Excel =====
 function getLocName(sel, inp) {
   if (!sel) return "";
   return sel.value === "__custom__" ? (inp?.value || "") : sel.value;
 }
 
-function exportExcel() {
-  const wb = XLSX.utils.book_new();
-
-  document.querySelectorAll(".week-block").forEach((block, bi) => {
-    const date = block.querySelector(".week-date")?.value || `第${bi+1}筆`;
-    const day  = block.querySelector(".week-day")?.textContent || "";
-
-    // 讀取地點
-    const locSels = [...block.querySelectorAll(".loc-sel")];
-    const locInps = [...block.querySelectorAll(".loc-inp")];
-
-    const wid = block.id.replace("block_", "");
-    const info = weekDataMap[wid] || {};
-    const hLocsCount = (info.hLocs || DEFAULT_HEALTH_LOCS).length;
-    const wLocsCount = (info.wLocs || DEFAULT_WIND_LOCS).length;
-
-    const resolvedLocs = locSels.map((s, i) => getLocName(s, locInps[i]));
-    const hLocNames = resolvedLocs.slice(0, hLocsCount);
-    const wLocNames = resolvedLocs.slice(hLocsCount, hLocsCount + wLocsCount);
-
-    // 建立表頭
-    const header1 = ["類別"];
-    hLocNames.forEach(l => { header1.push(`健康餐-${l}-類別`); header1.push(`健康餐-${l}-品項`); });
-    wLocNames.forEach(l => { header1.push(`風味餐-${l}-類別`); header1.push(`風味餐-${l}-品項`); });
-
-    const sheetData = [
-      [`日期：${date}　${day}`],
-      header1
-    ];
-
-    block.querySelectorAll("table tr").forEach(tr => {
-      const catTd = tr.querySelector(".td-cat");
-      if (!catTd) return;
-      const rowArr = [catTd.textContent];
-      const sels1 = [...tr.querySelectorAll("td.td-l1 select")];
-      const sels2 = [...tr.querySelectorAll("td.td-l2 select")];
-      sels1.forEach((s1, i) => {
-        rowArr.push(s1.value && s1.value !== "-" ? s1.value : "");
-        rowArr.push(sels2[i]?.value && sels2[i].value !== "-" ? sels2[i].value : "");
-      });
-      sheetData.push(rowArr);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-
-    // 欄寬
-    ws['!cols'] = header1.map((_, i) => ({ wch: i === 0 ? 8 : 14 }));
-
-    // 合併第一列
-    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:header1.length-1} }];
-
-    const sheetName = date.replace(/[\\\/\?\*\[\]:]/g, "_").slice(0, 31) || `第${bi+1}筆`;
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  });
-
-  if (wb.SheetNames.length === 0) {
+function exportHTML(itemOnlyMode) {
+  const blocks = document.querySelectorAll(".week-block");
+  if (blocks.length === 0) {
     alert("沒有可匯出的資料，請先新增日期並填寫菜單。");
     return;
   }
 
-  XLSX.writeFile(wb, `御品菜單_${new Date().toLocaleDateString("zh-TW").replace(/\//g,"-")}.xlsx`);
+  // 擷取目前頁面所有 CSS 樣式
+  let cssText = "";
+  for (const sheet of document.styleSheets) {
+    try {
+      for (const rule of sheet.cssRules) { cssText += rule.cssText + "\n"; }
+    } catch(e) {}
+  }
+
+  let tablesHTML = "";
+
+  blocks.forEach((block, bi) => {
+    const date = block.querySelector(".week-date")?.value || "";
+    const day  = block.querySelector(".week-day")?.textContent || "";
+    const wid  = block.id.replace("block_", "");
+    const info = weekDataMap[wid] || {};
+    const hLocsCount = (info.hLocs || DEFAULT_HEALTH_LOCS).length;
+    const wLocsCount = (info.wLocs || DEFAULT_WIND_LOCS).length;
+
+    const locSels = [...block.querySelectorAll(".loc-sel")];
+    const locInps = [...block.querySelectorAll(".loc-inp")];
+    const resolvedLocs = locSels.map((s, i) => getLocName(s, locInps[i]));
+    const hLocNames = resolvedLocs.slice(0, hLocsCount);
+    const wLocNames = resolvedLocs.slice(hLocsCount, hLocsCount + wLocsCount);
+
+    // ── 建立表頭 ──
+    const totalCols = 1 + (itemOnlyMode
+      ? (hLocNames.length + wLocNames.length)
+      : (hLocNames.length * 2 + wLocNames.length * 2));
+
+    // row1: 類別 | 健康餐(span) | 風味餐(span)
+    const hSpan = itemOnlyMode ? hLocNames.length : hLocNames.length * 2;
+    const wSpan = itemOnlyMode ? wLocNames.length : wLocNames.length * 2;
+    let hr1 = `<tr>
+      <th class="th-week" rowspan="3">類別</th>
+      <th class="th-health" colspan="${hSpan}">【健康餐】</th>
+      <th class="th-wind" colspan="${wSpan}">【風味餐】</th>
+    </tr>`;
+
+    // row2: 地點
+    let hr2 = "<tr>";
+    hLocNames.forEach((loc, i) => {
+      const cls = i%2===0 ? "th-hloc" : "th-hloc-light";
+      const cs = itemOnlyMode ? 1 : 2;
+      hr2 += `<th class="${cls}" colspan="${cs}" style="border-left:none;border-right:none;">${loc}</th>`;
+    });
+    wLocNames.forEach((loc, i) => {
+      const cls = i%2===0 ? "th-wloc" : "th-wloc-light";
+      const cs = itemOnlyMode ? 1 : 2;
+      hr2 += `<th class="${cls}" colspan="${cs}" style="border-left:none;border-right:none;">${loc}</th>`;
+    });
+    hr2 += "</tr>";
+
+    // row3: 類別/品項 sub-headers（itemOnly 模式只顯示品項）
+    let hr3 = "<tr>";
+    if (!itemOnlyMode) {
+      hLocNames.forEach((_, i) => {
+        ["類別","品項"].forEach(l => {
+          const cls = i%2===0 ? "th-sub th-sub-h" : "th-sub th-sub-h-light";
+          hr3 += `<th class="${cls}">${l}</th>`;
+        });
+      });
+      wLocNames.forEach((_, i) => {
+        ["類別","品項"].forEach(l => {
+          const cls = i%2===0 ? "th-sub th-sub-w" : "th-sub th-sub-w-light";
+          hr3 += `<th class="${cls}">${l}</th>`;
+        });
+      });
+    } else {
+      hLocNames.forEach((_, i) => {
+        const cls = i%2===0 ? "th-sub th-sub-h" : "th-sub th-sub-h-light";
+        hr3 += `<th class="${cls}">品項</th>`;
+      });
+      wLocNames.forEach((_, i) => {
+        const cls = i%2===0 ? "th-sub th-sub-w" : "th-sub th-sub-w-light";
+        hr3 += `<th class="${cls}">品項</th>`;
+      });
+    }
+    hr3 += "</tr>";
+
+    // ── 資料列 ──
+    let rowsHTML = "";
+    block.querySelectorAll("table tr").forEach(tr => {
+      const catTd = tr.querySelector(".td-cat");
+      if (!catTd) return;
+      const rowName = catTd.textContent;
+      const sels1 = [...tr.querySelectorAll("td.td-l1 select")];
+      const sels2 = [...tr.querySelectorAll("td.td-l2 select")];
+
+      // 行背景色（依列名）
+      const [hS, hS2, wS, wS2] = getRowStyles(rowName);
+
+      rowsHTML += `<tr><td class="td-cat">${rowName}</td>`;
+
+      const totalLocs = hLocNames.length + wLocNames.length;
+      sels1.forEach((s1, i) => {
+        const isH = i < hLocNames.length;
+        const baseS  = isH ? hS  : wS;
+        const baseS2 = isH ? hS2 : wS2;
+        const col    = i % (isH ? hLocNames.length : wLocNames.length);
+        const useDark = col % 2 === 0;
+
+        const v1 = s1.value && s1.value !== "-" ? s1.value : "";
+        const s2el = sels2[i];
+        const v2 = s2el?.value && s2el.value !== "-" && s2el.value !== "-- 品項 --" ? s2el.value : "";
+
+        // 品項格顏色（inline style 優先，否則 class）
+        let itemBgStyle = "";
+        if (s2el && s2el.value && s2el.value !== "-" && s2el.value !== "-- 品項 --") {
+          const colors = getFoodColors(s2el.value);
+          if (colors) {
+            itemBgStyle = `background:${colors.bg};color:${colors.fg};`;
+          }
+        }
+
+        if (!itemOnlyMode) {
+          rowsHTML += `<td class="td-l1 ${baseS}" style="padding:4px 6px;">${v1}</td>`;
+          rowsHTML += `<td class="td-l2 ${baseS2}" style="padding:4px 6px;font-weight:600;${itemBgStyle}">${v2}</td>`;
+        } else {
+          rowsHTML += `<td class="td-l2 ${baseS2}" style="padding:4px 6px;font-weight:600;${itemBgStyle}">${v2}</td>`;
+        }
+      });
+
+      rowsHTML += "</tr>";
+    });
+
+    tablesHTML += `
+      <div class="week-block" style="margin-bottom:28px;">
+        <div class="week-titlebar">
+          <span class="week-label">日期：${date}</span>
+          <span class="week-day">${day}</span>
+        </div>
+        <div class="tbl-wrap">
+          <table>${hr1}${hr2}${hr3}${rowsHTML}</table>
+        </div>
+      </div>`;
+  });
+
+  const modeLabel = itemOnlyMode ? "僅品項" : "含類別";
+  const dateStr = new Date().toLocaleDateString("zh-TW").replace(/\//g,"-");
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>chiayumenu_${dateStr}（${modeLabel}）</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+${cssText}
+body { font-family:'Noto Sans TC',sans-serif; background:#eceff1; padding:18px 12px; }
+h1 { text-align:center; color:#2e7d32; font-size:1.4rem; font-weight:700; margin-bottom:18px; letter-spacing:3px; }
+select { display:none; }
+.tbl-wrap { overflow-x:auto; }
+@media print {
+  body { background:#fff; padding:6px; }
+  .week-block { page-break-inside:avoid; box-shadow:none; }
+}
+</style>
+</head>
+<body>
+<h1>chiayumenumanger（${modeLabel}）</h1>
+<p style="text-align:center;color:#78909c;font-size:0.82rem;margin-bottom:18px;">匯出時間：${new Date().toLocaleString("zh-TW")}</p>
+${tablesHTML}
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `chiayumenu_${dateStr}_${modeLabel}.html`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
-// ===== 食材色塊面板 =====
 function renderDB() {
   const grid=document.getElementById("dbGrid");
   Object.entries(COLOR_GROUPS).forEach(([key,g])=>{
@@ -785,8 +1183,6 @@ function renderDB() {
   });
 }
 
-// ===== 食材類別色塊面板 =====
-// 每個分類對應的顯示顏色（標題背景、標題文字、品項背景、品項文字）
 const CAT_STYLES = {
   "健康餐主菜": { titleBg:"#2e7d32", titleFg:"#fff", itemBg:"#c8e6c9", itemFg:"#1b5e20" },
   "風味餐主菜": { titleBg:"#1565c0", titleFg:"#fff", itemBg:"#bbdefb", itemFg:"#0d47a1" },
@@ -819,7 +1215,6 @@ function renderCatDB() {
   });
 }
 
-// ===== 初始化 =====
 renderDB();
 renderCatDB();
 
@@ -828,6 +1223,237 @@ if (!loaded) {
   addWeek();
   addWeek();
 }
+
+// ===== 管理面板邏輯 =====
+
+function switchMgmtTab(tab) {
+  document.querySelectorAll('.mgmt-tab').forEach((t, i) => {
+    const names = ['items','colors','rowcats'];
+    t.classList.toggle('active', names[i] === tab);
+  });
+  ['items','colors','rowcats'].forEach(s => {
+    document.getElementById(`mgmt-${s}`).style.display = s===tab ? '' : 'none';
+  });
+  if (tab==='items') initMgmtItems();
+  if (tab==='colors') initMgmtColors();
+  if (tab==='rowcats') initMgmtRowCats();
+}
+
+// ── 類別品項管理 ──
+function initMgmtItems() {
+  const sel = document.getElementById('mgmt-cat-sel');
+  const cur = sel.value;
+  sel.innerHTML = Object.keys(DB).map(k => `<option value="${k}" ${k===cur?'selected':''}>${k}</option>`).join('');
+  renderMgmtItems();
+}
+
+function renderMgmtItems() {
+  const cat = document.getElementById('mgmt-cat-sel').value;
+  const list = document.getElementById('mgmt-items-list');
+  const style = CAT_STYLES[cat] || { itemBg:'#eceff1', itemFg:'#37474f' };
+  list.innerHTML = '';
+  (DB[cat]||[]).filter(i=>i!=='-').forEach(item => {
+    const chip = document.createElement('span');
+    chip.className = 'mgmt-item-chip';
+    chip.style.background = style.itemBg;
+    chip.style.color = style.itemFg;
+    chip.innerHTML = `${item}<button class="chip-del" title="刪除" onclick="removeItemFromCategory('${cat}','${item.replace(/'/g,"\\'")}')">✕</button>`;
+    list.appendChild(chip);
+  });
+  if (!list.children.length) list.innerHTML = '<span style="color:#90a4ae;font-size:0.78rem;">（尚無品項）</span>';
+}
+
+function addItemToCategory() {
+  const cat = document.getElementById('mgmt-cat-sel').value;
+  const inp = document.getElementById('mgmt-item-input');
+  const val = inp.value.trim();
+  if (!val) { inp.focus(); return; }
+  if (!DB[cat]) DB[cat] = ['-'];
+  if (DB[cat].includes(val)) { alert('此品項已存在！'); return; }
+  DB[cat].push(val);
+  inp.value = '';
+  renderMgmtItems();
+  rerenderDBPanels();
+  scheduleAutoSave();
+}
+
+function removeItemFromCategory(cat, item) {
+  if (!confirm(`確定刪除「${item}」？`)) return;
+  DB[cat] = DB[cat].filter(i => i !== item);
+  renderMgmtItems();
+  rerenderDBPanels();
+  scheduleAutoSave();
+}
+
+function addNewCategory() {
+  const name = prompt('輸入新類別名稱：');
+  if (!name || !name.trim()) return;
+  const key = name.trim();
+  if (DB[key]) { alert('此類別已存在！'); return; }
+  DB[key] = ['-'];
+  CAT_STYLES[key] = { titleBg:'#607d8b', titleFg:'#fff', itemBg:'#eceff1', itemFg:'#37474f' };
+  // 重新建立下拉
+  initMgmtItems();
+  document.getElementById('mgmt-cat-sel').value = key;
+  renderMgmtItems();
+  rerenderDBPanels();
+}
+
+function deleteCurrentCategory() {
+  const cat = document.getElementById('mgmt-cat-sel').value;
+  if (!confirm(`確定刪除整個「${cat}」類別及其所有品項？`)) return;
+  delete DB[cat];
+  delete CAT_STYLES[cat];
+  initMgmtItems();
+  rerenderDBPanels();
+  scheduleAutoSave();
+}
+
+// ── 顏色分組管理 ──
+function initMgmtColors() {
+  const sel = document.getElementById('mgmt-color-sel');
+  const cur = sel.value;
+  sel.innerHTML = Object.entries(COLOR_GROUPS).map(([k,g]) =>
+    `<option value="${k}" ${k===cur?'selected':''}>${g.label}（${k}）</option>`
+  ).join('');
+  renderMgmtColorItems();
+}
+
+function renderMgmtColorItems() {
+  const key = document.getElementById('mgmt-color-sel').value;
+  const g = COLOR_GROUPS[key];
+  const list = document.getElementById('mgmt-color-items-list');
+  list.innerHTML = '';
+  if (!g) return;
+  // 同步顏色選擇器
+  document.getElementById('mgmt-color-bg').value = rgbToHex(g.bg) || g.bg;
+  document.getElementById('mgmt-color-fg').value = rgbToHex(g.fg||'#333') || '#333333';
+  document.getElementById('mgmt-color-titlebg').value = rgbToHex(g.titleBg) || g.titleBg;
+  g.items.forEach(item => {
+    const chip = document.createElement('span');
+    chip.className = 'mgmt-item-chip';
+    chip.style.background = g.bg;
+    chip.style.color = g.fg || '#333';
+    chip.innerHTML = `${item}<button class="chip-del" title="刪除" onclick="removeItemFromColorGroup('${key}','${item.replace(/'/g,"\\'")}')">✕</button>`;
+    list.appendChild(chip);
+  });
+  if (!list.children.length) list.innerHTML = '<span style="color:#90a4ae;font-size:0.78rem;">（尚無食材）</span>';
+}
+
+function addItemToColorGroup() {
+  const key = document.getElementById('mgmt-color-sel').value;
+  const inp = document.getElementById('mgmt-color-item-input');
+  const val = inp.value.trim();
+  if (!val) { inp.focus(); return; }
+  if (!COLOR_GROUPS[key]) return;
+  if (COLOR_GROUPS[key].items.includes(val)) { alert('此食材已存在！'); return; }
+  COLOR_GROUPS[key].items.push(val);
+  FOOD_COLOR[val] = key;
+  inp.value = '';
+  renderMgmtColorItems();
+  rerenderDBPanels();
+  scheduleAutoSave();
+}
+
+function removeItemFromColorGroup(key, item) {
+  if (!confirm(`確定從顏色組刪除「${item}」？`)) return;
+  COLOR_GROUPS[key].items = COLOR_GROUPS[key].items.filter(i=>i!==item);
+  delete FOOD_COLOR[item];
+  renderMgmtColorItems();
+  rerenderDBPanels();
+  scheduleAutoSave();
+}
+
+function addNewColorGroup() {
+  const key = prompt('輸入顏色組 key（英文，如 orange）：');
+  if (!key || !key.trim()) return;
+  const k = key.trim().toLowerCase().replace(/\s+/g,'');
+  if (COLOR_GROUPS[k]) { alert('已存在！'); return; }
+  const label = prompt('顯示名稱（如 橙）：') || k;
+  COLOR_GROUPS[k] = { label, bg:'#ffcc80', fg:'#333', titleBg:'#ef6c00', items:[] };
+  initMgmtColors();
+  document.getElementById('mgmt-color-sel').value = k;
+  renderMgmtColorItems();
+}
+
+function deleteCurrentColorGroup() {
+  const key = document.getElementById('mgmt-color-sel').value;
+  if (!confirm(`確定刪除顏色組「${COLOR_GROUPS[key]?.label}」？`)) return;
+  COLOR_GROUPS[key].items.forEach(item => { if (FOOD_COLOR[item]===key) delete FOOD_COLOR[item]; });
+  delete COLOR_GROUPS[key];
+  initMgmtColors();
+  rerenderDBPanels();
+}
+
+function applyColorGroupColors() {
+  const key = document.getElementById('mgmt-color-sel').value;
+  if (!COLOR_GROUPS[key]) return;
+  COLOR_GROUPS[key].bg = document.getElementById('mgmt-color-bg').value;
+  COLOR_GROUPS[key].fg = document.getElementById('mgmt-color-fg').value;
+  COLOR_GROUPS[key].titleBg = document.getElementById('mgmt-color-titlebg').value;
+  renderMgmtColorItems();
+  rerenderDBPanels();
+}
+
+// ── 列類別設定管理 ──
+function initMgmtRowCats() {
+  const sel = document.getElementById('mgmt-row-sel');
+  const cur = sel.value;
+  sel.innerHTML = Object.keys(ROW_CATS).map(k => `<option value="${k}" ${k===cur?'selected':''}>${k}</option>`).join('');
+  renderMgmtRowCats();
+}
+
+function renderMgmtRowCats() {
+  const row = document.getElementById('mgmt-row-sel').value;
+  const list = document.getElementById('mgmt-rowcats-list');
+  list.innerHTML = '';
+  (ROW_CATS[row]||[]).filter(c=>c!=='-').forEach(cat => {
+    const chip = document.createElement('span');
+    chip.className = 'rowcat-chip';
+    chip.innerHTML = `${cat}<button class="chip-del" onclick="removeCatFromRow('${row}','${cat.replace(/'/g,"\\'")}')">✕</button>`;
+    list.appendChild(chip);
+  });
+  // 更新可新增的類別下拉
+  const addSel = document.getElementById('mgmt-rowcat-add-sel');
+  const existing = ROW_CATS[row] || [];
+  addSel.innerHTML = Object.keys(DB).filter(k=>!existing.includes(k))
+    .map(k=>`<option value="${k}">${k}</option>`).join('');
+}
+
+function addCatToRow() {
+  const row = document.getElementById('mgmt-row-sel').value;
+  const cat = document.getElementById('mgmt-rowcat-add-sel').value;
+  if (!cat) return;
+  if (!ROW_CATS[row]) ROW_CATS[row] = ['-'];
+  if (ROW_CATS[row].includes(cat)) return;
+  ROW_CATS[row].push(cat);
+  renderMgmtRowCats();
+}
+
+function removeCatFromRow(row, cat) {
+  ROW_CATS[row] = (ROW_CATS[row]||[]).filter(c=>c!==cat);
+  renderMgmtRowCats();
+}
+
+// ── 重新渲染底部 DB 面板 ──
+function rerenderDBPanels() {
+  const g1 = document.getElementById('dbGrid');
+  const g2 = document.getElementById('catGrid');
+  g1.innerHTML = ''; g2.innerHTML = '';
+  renderDB(); renderCatDB();
+}
+
+// ── 工具函數 ──
+function rgbToHex(color) {
+  if (!color) return null;
+  if (color.startsWith('#')) return color;
+  const m = color.match(/\d+/g);
+  if (!m || m.length < 3) return null;
+  return '#' + m.slice(0,3).map(n=>parseInt(n).toString(16).padStart(2,'0')).join('');
+}
+
+// 初始化管理面板
+initMgmtItems();
 </script>
 </body>
 </html>
