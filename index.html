@@ -390,13 +390,13 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'N
 </div>
 
 <script type="module">
-const STORE_KEY='kengle_data_v3';
+const STORE_KEY='kengle_data_v4'; // bumped version for per-month migration
 const WD=['日','一','二','三','四','五','六'];
 const BASE_SALARY=36000;
 
 // ── FIREBASE ─────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -410,7 +410,8 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
-const DOC_REF = doc(db, 'workdata', 'kengle');
+// Per-month document references: workdata/{year_mm}
+function monthDocRef(mk){ return doc(db, 'workdata', mk); }
 
 // ── AUTH UI ───────────────────────────────────────────────
 function showLoginScreen(){
@@ -441,24 +442,78 @@ async function tryLogin(){
 document.getElementById('btnLogin').addEventListener('click', tryLogin);
 document.getElementById('pwdInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
 
-// ── STORAGE ──────────────────────────────────────────────
+// ── STORAGE (per-month documents) ────────────────────────
 let saveTimer=null;
+
+// Load a single month from Firestore: workdata/{year_mm}
+async function loadMonth(mk){
+  try{
+    const snap=await getDoc(monthDocRef(mk));
+    if(snap.exists()) return snap.data().days || {};
+    return {};
+  }catch(e){
+    console.warn('Firebase loadMonth failed',mk,e);
+    return {};
+  }
+}
+
+// Load all months from old single-doc format (migration)
+async function migrateOldData(){
+  try{
+    const oldRef=doc(db,'workdata','kengle');
+    const snap=await getDoc(oldRef);
+    if(snap.exists()&&snap.data().payload){
+      const old=JSON.parse(snap.data().payload);
+      console.log('Migrating old data...',Object.keys(old));
+      for(const mk of Object.keys(old)){
+        await setDoc(monthDocRef(mk),{days:old[mk],updatedAt:Date.now()});
+      }
+      // Delete old doc by overwriting with migration flag
+      await setDoc(oldRef,{migrated:true,migratedAt:Date.now()});
+      console.log('Migration complete');
+      return old;
+    }
+  }catch(e){
+    console.warn('Migration check failed',e);
+  }
+  return null;
+}
+
 async function loadFromCloud(){
   try{
-    const snap=await getDoc(DOC_REF);
-    if(snap.exists()) return snap.data().payload ? JSON.parse(snap.data().payload) : {};
-    return {};
+    // Check if old single-doc exists and migrate
+    const oldRef=doc(db,'workdata','kengle');
+    const oldSnap=await getDoc(oldRef);
+    if(oldSnap.exists()&&oldSnap.data().payload){
+      const migrated=await migrateOldData();
+      if(migrated) return migrated;
+    }
+    // Load current month only; other months loaded on demand
+    const now=new Date();
+    const mk=monthKey(now.getFullYear(),now.getMonth());
+    const days=await loadMonth(mk);
+    return {[mk]:days};
   }catch(e){
     console.warn('Firebase load failed, using localStorage',e);
     try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e2){return {};}
   }
 }
+
+// Ensure month data is loaded before viewing it
+async function ensureMonthLoaded(mk){
+  if(allData[mk]) return; // already loaded
+  allData[mk]=await loadMonth(mk);
+}
+
 function save(){
   showSaveStatus('saving');
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     try{
-      await setDoc(DOC_REF,{payload:JSON.stringify(allData),updatedAt:Date.now()});
+      // Only save the currently viewed month
+      const mk=monthKey(viewYear,viewMonth);
+      await setDoc(monthDocRef(mk),{days:allData[mk]||{},updatedAt:Date.now()});
+      // localStorage keeps full cache
       try{localStorage.setItem(STORE_KEY,JSON.stringify(allData));}catch(e){}
     }catch(e){
       console.warn('Firebase save failed, using localStorage',e);
@@ -684,7 +739,7 @@ function renderAll(){
       const c1=document.createElement('span');c1.className='time-chip';c1.textContent='08:00';
       const arr=document.createElement('span');arr.className='arrow';arr.textContent='→';
       const c2=document.createElement('span');c2.className='time-chip'+(d.endTime!=='17:00'?' ot':'');
-      c2.textContent=(d.timeLocked?'🔒 ':'')+d.endTime;
+      c2.textContent=d.endTime;
       times.appendChild(c1);times.appendChild(arr);times.appendChild(c2);hdr.appendChild(times);
       const payEl=document.createElement('div');payEl.className='day-pay'+(payVal===0?' zero':'');
       payEl.textContent=payVal>0?'$'+payVal.toLocaleString():'—';
@@ -866,8 +921,8 @@ document.getElementById('btnCollapseAll').addEventListener('click',()=>{
 });
 
 // ── MONTH NAV ─────────────────────────────────────────────
-document.getElementById('btnPrev').addEventListener('click',()=>{viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--;}renderAll();});
-document.getElementById('btnNext').addEventListener('click',()=>{viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++;}renderAll();});
+document.getElementById('btnPrev').addEventListener('click',async()=>{viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--;}await ensureMonthLoaded(monthKey(viewYear,viewMonth));renderAll();});
+document.getElementById('btnNext').addEventListener('click',async()=>{viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++;}await ensureMonthLoaded(monthKey(viewYear,viewMonth));renderAll();});
 
 // ── MODAL ─────────────────────────────────────────────────
 let pendingAction=null;
@@ -1151,9 +1206,10 @@ function scrollToToday(){
 }
 // ── INIT ──────────────────────────────────────────────────
 async function initApp(){
-  allData=await loadFromCloud();
   const now=new Date();
   viewYear=now.getFullYear();viewMonth=now.getMonth();
+  // Load current month (with migration if needed)
+  allData=await loadFromCloud();
   const mk=monthKey(viewYear,viewMonth);
   if(!allData[mk]) allData[mk]={};
   const dk=String(now.getDate());
