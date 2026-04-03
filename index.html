@@ -81,7 +81,9 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'N
 .days-list{padding:4px 12px 90px;display:flex;flex-direction:column;gap:8px}
 .day-card{background:var(--bg2);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
 .day-card.is-weekend{border-left:3px solid var(--accent-border)}
-.day-card.is-today{border-left:3px solid var(--accent)}
+.day-card.is-today{border-left:3px solid var(--accent);background:linear-gradient(135deg,#eff6ff 0%,#e0eaff 100%)}
+.day-card.is-today .day-date{color:var(--accent)}
+.day-card.is-today .day-weekday{color:var(--accent)}
 .day-card.is-holiday{opacity:0.55}
 .day-header{display:flex;align-items:center;gap:8px;padding:10px 13px;cursor:pointer;user-select:none}
 .day-date{font-size:14px;font-weight:700;font-family:'DM Mono',monospace;min-width:52px;color:var(--text)}
@@ -189,6 +191,18 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'N
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px">
+  <div style="font-size:48px">🔐</div>
+  <div style="font-size:22px;font-weight:700;color:var(--text)">Kengle 工作紀錄</div>
+  <div style="font-size:14px;color:var(--text2)">請輸入密碼</div>
+  <input id="pwdInput" type="password" placeholder="密碼" style="width:100%;max-width:260px;padding:13px 16px;border-radius:12px;border:1.5px solid var(--border2);font-size:16px;font-family:'DM Mono',monospace;outline:none;text-align:center;background:#fff;color:var(--text)">
+  <button id="btnLogin" style="width:100%;max-width:260px;padding:13px;border-radius:12px;background:var(--accent);color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">進入</button>
+  <div id="loginError" style="font-size:13px;color:var(--red);min-height:20px"></div>
+</div>
+
+<!-- APP -->
+<div id="appRoot" style="display:none">
 <div class="header">
   <div class="header-inner">
     <div class="header-left">
@@ -330,21 +344,93 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'N
   <div class="drawer-total-bar" id="mTotalBar"></div>
 </div>
 
-<script>
+<!-- OT Breakdown Popup -->
+<div class="modal-overlay hidden" id="otBreakPopup">
+  <div class="modal" style="text-align:left">
+    <div class="modal-icon">⏰</div>
+    <h2>加班費計算明細</h2>
+    <div id="otBreakContent" style="margin-bottom:18px"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" style="flex:1;text-align:center" onclick="document.getElementById('otBreakPopup').classList.add('hidden')">關閉</button></div>
+  </div>
+</div>
+
+<script type="module">
 const STORE_KEY='kengle_data_v3';
 const WD=['日','一','二','三','四','五','六'];
 const BASE_SALARY=36000;
 
+// ── FIREBASE ─────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAZlK1yptGoIAcmNuZp99sgANCUJ1crdkI",
+  authDomain: "kenglework.firebaseapp.com",
+  projectId: "kenglework",
+  storageBucket: "kenglework.firebasestorage.app",
+  messagingSenderId: "560347469856",
+  appId: "1:560347469856:web:4104600a45bf84378c0445"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const DOC_REF = doc(db, 'workdata', 'kengle');
+
+// ── AUTH UI ───────────────────────────────────────────────
+function showLoginScreen(){
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('appRoot').style.display='none';
+  setTimeout(()=>document.getElementById('pwdInput').focus(),100);
+}
+function hideLoginScreen(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appRoot').style.display='block';
+}
+async function tryLogin(){
+  const pwd=document.getElementById('pwdInput').value;
+  const errEl=document.getElementById('loginError');
+  const btn=document.getElementById('btnLogin');
+  if(!pwd){errEl.textContent='請輸入密碼';return;}
+  btn.textContent='驗證中…';btn.disabled=true;errEl.textContent='';
+  try{
+    await signInWithEmailAndPassword(auth,'sophiesu000@gmail.com',pwd);
+  }catch(e){
+    errEl.textContent='❌ 密碼錯誤';
+    document.getElementById('pwdInput').value='';
+    document.getElementById('pwdInput').focus();
+  }finally{
+    btn.textContent='進入';btn.disabled=false;
+  }
+}
+document.getElementById('btnLogin').addEventListener('click', tryLogin);
+document.getElementById('pwdInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+
 // ── STORAGE ──────────────────────────────────────────────
-function load(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
 let saveTimer=null;
+async function loadFromCloud(){
+  try{
+    const snap=await getDoc(DOC_REF);
+    if(snap.exists()) return snap.data().payload ? JSON.parse(snap.data().payload) : {};
+    return {};
+  }catch(e){
+    console.warn('Firebase load failed, using localStorage',e);
+    try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e2){return {};}
+  }
+}
 function save(){
   showSaveStatus('saving');
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{
-    try{localStorage.setItem(STORE_KEY,JSON.stringify(allData));}catch(e){}
+  saveTimer=setTimeout(async()=>{
+    try{
+      await setDoc(DOC_REF,{payload:JSON.stringify(allData),updatedAt:Date.now()});
+      try{localStorage.setItem(STORE_KEY,JSON.stringify(allData));}catch(e){}
+    }catch(e){
+      console.warn('Firebase save failed, using localStorage',e);
+      try{localStorage.setItem(STORE_KEY,JSON.stringify(allData));}catch(e2){}
+    }
     showSaveStatus('saved');
-  },400);
+  },600);
 }
 function showSaveStatus(s){
   const el=document.getElementById('saveStatus');
@@ -353,7 +439,7 @@ function showSaveStatus(s){
   if(s==='saved') setTimeout(()=>el.classList.remove('show'),1800);
 }
 
-let allData=load();
+let allData={};
 let viewYear,viewMonth;
 
 // ── HELPERS ──────────────────────────────────────────────
@@ -379,17 +465,51 @@ function parseMeters(str){
   return str.trim().split(/[\s,]+/).filter(v=>v!=='').map(v=>parseFloat(v)||0).filter(v=>v>0);
 }
 
+function normalizeEndMins(h,m){
+  // 若輸入時間 < 17:00，視為跨午夜（隔天）加 24h
+  const raw=h*60+m;
+  return raw<17*60?raw+24*60:raw;
+}
 function calcPay(h,m){
-  const end=h*60+m;
+  const end=normalizeEndMins(h,m);
   if(end<=17*60) return 0;
   let t=0;
   [{f:17*60,to:20*60,r:3.5},{f:20*60,to:24*60,r:4.5},{f:24*60,to:32*60,r:9}].forEach(s=>{
-    const a=Math.max(s.f,17*60),b=Math.min(s.to,end);
+    const a=s.f,b=Math.min(s.to,end);
     if(b>a) t+=(b-a)*s.r;
   });
   return Math.round(t);
 }
 
+function calcOTBreakdown(endTime){
+  const[h,m]=endTime.split(':').map(Number);
+  const end=normalizeEndMins(h,m);
+  if(end<=17*60) return [];
+  const segs=[
+    {label:'17:00 – 20:00',f:17*60,to:20*60,rate:3.5},
+    {label:'20:00 – 00:00',f:20*60,to:24*60,rate:4.5},
+    {label:'00:00 – 08:00',f:24*60,to:32*60,rate:9}
+  ];
+  return segs.map(s=>{
+    const a=s.f,b=Math.min(s.to,end);
+    if(b<=a) return null;
+    const mins=b-a;const pay=Math.round(mins*s.rate);
+    return{label:s.label,mins,rate:s.rate,pay};
+  }).filter(Boolean);
+}
+function showOTBreakdown(endTime,total){
+  const segs=calcOTBreakdown(endTime);
+  let html='<div style="display:flex;flex-direction:column;gap:8px">';
+  segs.forEach(s=>{
+    const hh=Math.floor(s.mins/60),mm=s.mins%60;
+    const dur=hh>0?`${hh}h${mm>0?String(mm).padStart(2,'0')+'m':''}`:`${mm}m`;
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg3);padding:9px 12px;border-radius:9px"><span style="font-size:12px;color:var(--text2)">${s.label}<br><span style="font-size:11px;color:var(--text3)">${dur} × $${s.rate}/min</span></span><span style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)">$${s.pay.toLocaleString()}</span></div>`;
+  });
+  html+=`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--accent-dim);border:1px solid var(--accent-border);padding:9px 12px;border-radius:9px"><span style="font-size:13px;font-weight:600;color:var(--accent)">加班費合計</span><span style="font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)">$${total.toLocaleString()}</span></div>`;
+  html+='</div>';
+  document.getElementById('otBreakContent').innerHTML=html;
+  document.getElementById('otBreakPopup').classList.remove('hidden');
+}
 function arrStats(arr){
   const a=arr||[];
   return{count:a.length,total:a.reduce((s,v)=>s+v,0)};
@@ -422,7 +542,7 @@ function updateSummary(rows){
     if(r.data.holiday) return;
     const[eh,em]=r.data.endTime.split(':').map(Number);
     tpay+=calcPay(eh,em);
-    totMin+=Math.max(0,eh*60+em-17*60);
+    totMin+=Math.max(0,normalizeEndMins(eh,em)-17*60);
     const res=arrStats(r.data.metersArr);
     ttrips+=res.count;tmeters+=res.total;
   });
@@ -463,8 +583,11 @@ function renderAll(){
     card.className='day-card'+(r.isWeekend?' is-weekend':'')+(d.holiday?' is-holiday':'')+(isToday?' is-today':'');
 
     // HEADER
+    const hasData=d.holiday||d.timeLocked||(d.metersArr&&d.metersArr.length>0);
     const hdr=document.createElement('div');hdr.className='day-header';
-    const dateEl=document.createElement('div');dateEl.className='day-date';dateEl.textContent=fmtDate(r.dt);
+    const dateEl=document.createElement('div');dateEl.className='day-date';
+    if(hasData){const ck=document.createElement('span');ck.textContent='✓';ck.style.cssText='font-size:11px;color:var(--green);margin-right:4px;font-weight:700';dateEl.appendChild(ck);}
+    dateEl.appendChild(document.createTextNode(fmtDate(r.dt)));
     const wdEl=document.createElement('div');wdEl.className='day-weekday';wdEl.textContent=WD[r.wd];
     hdr.appendChild(dateEl);hdr.appendChild(wdEl);
 
@@ -478,7 +601,9 @@ function renderAll(){
       c2.textContent=(d.timeLocked?'🔒 ':'')+d.endTime;
       times.appendChild(c1);times.appendChild(arr);times.appendChild(c2);hdr.appendChild(times);
       const payEl=document.createElement('div');payEl.className='day-pay'+(payVal===0?' zero':'');
-      payEl.textContent=payVal>0?'$'+payVal.toLocaleString():'—';hdr.appendChild(payEl);
+      payEl.textContent=payVal>0?'$'+payVal.toLocaleString():'—';
+      if(payVal>0){payEl.style.cssText='cursor:pointer;text-decoration:underline dotted';payEl.title='查看加班費明細';payEl.addEventListener('click',e=>{e.stopPropagation();showOTBreakdown(d.endTime,payVal);});}
+      hdr.appendChild(payEl);
     }
 
     const chev=document.createElement('span');chev.className='chevron'+(d.expanded?' open':'');chev.textContent='▾';hdr.appendChild(chev);
@@ -600,24 +725,24 @@ function renderAll(){
             });
             kpad.appendChild(b);
           });
-          // + add button full width
-          const addBtn=document.createElement('button');addBtn.className='kp-btn kp-add';addBtn.textContent='＋  加入';
+          // + add button (span 2 cols) + confirm button (1 col)
+          const addBtn=document.createElement('button');addBtn.className='kp-btn kp-add';addBtn.style.cssText='grid-column:span 2';addBtn.textContent='＋  加入';
           addBtn.addEventListener('click',()=>{
             const v=parseFloat(kps.current);
             if(!kps.current||isNaN(v)||v<=0){kpCurr.style.border='1.5px solid var(--red)';setTimeout(()=>kpCurr.style.border='',1000);return;}
             if(!d.metersArr) d.metersArr=[];
             d.metersArr.push(v);syncMetersInput(d);kps.current='';save();renderAll();
           });
-          kpad.appendChild(addBtn);
+          const confBtn=document.createElement('button');confBtn.className='btn btn-success';confBtn.style.cssText='border-radius:8px;font-size:13px;font-weight:700';confBtn.textContent='確認米數';
+          confBtn.addEventListener('click',()=>{d.metersLocked=true;save();renderAll();});
+          kpad.appendChild(addBtn);kpad.appendChild(confBtn);
           mSec.appendChild(kpad);
 
-          // badges + confirm
+          // badges only
           const btm=document.createElement('div');btm.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap';
           const br=document.createElement('div');br.className='badge-row';br.style.flex='1';
           br.innerHTML=`<div class="badge-item"><span class="badge-lbl">趟次</span><span class="badge badge-blue">${mRes.count}</span></div><div class="badge-item"><span class="badge-lbl">米數計</span><span class="badge badge-green">${fmtNum(mRes.total)}</span></div>`;
-          const confBtn=document.createElement('button');confBtn.className='btn btn-success';confBtn.textContent='確認米數';
-          confBtn.addEventListener('click',()=>{d.metersLocked=true;save();renderAll();});
-          btm.appendChild(br);btm.appendChild(confBtn);
+          btm.appendChild(br);
           mSec.appendChild(btm);
         }
         body.appendChild(mSec);
@@ -674,7 +799,7 @@ document.getElementById('btnExport').addEventListener('click',()=>{
     if(d.holiday){data.push([fmtDate(r.dt),WD[r.wd],'—','—','—','—','—','—','休假']);return;}
     const[eh,em]=d.endTime.split(':').map(Number);
     const pay=calcPay(eh,em);const mRes=arrStats(d.metersArr);
-    tPay+=pay;tTrips+=mRes.count;tMeters+=mRes.total;tOTMin+=Math.max(0,eh*60+em-17*60);
+    tPay+=pay;tTrips+=mRes.count;tMeters+=mRes.total;tOTMin+=Math.max(0,normalizeEndMins(eh,em)-17*60);
     data.push([fmtDate(r.dt),WD[r.wd],'08:00',d.endTime,pay,mRes.count,(d.metersArr||[]).join(' '),fmtNum(mRes.total),d.metersLocked?'已確認':'']);
   });
   data.push([]);
@@ -757,7 +882,8 @@ function renderOTDrawer(){
   rows.forEach(r=>{
     const d=r.data;
     const[eh,em]=d.endTime.split(':').map(Number);
-    const otMin=Math.max(0,eh*60+em-17*60);
+    const endM=normalizeEndMins(eh,em);
+    const otMin=Math.max(0,endM-17*60);
     const pay=calcPay(eh,em);
     totalWorkDays++;
     if(otMin===0&&pay===0) return;
@@ -808,15 +934,33 @@ function renderMDrawer(){
   bar.innerHTML=html;
 }
 
+// ── SCROLL TO TODAY ──────────────────────────────────────
+function scrollToToday(){
+  const todayCard=document.querySelector('.day-card.is-today');
+  if(todayCard) todayCard.scrollIntoView({behavior:'smooth',block:'center'});
+}
 // ── INIT ──────────────────────────────────────────────────
-const now=new Date();
-viewYear=now.getFullYear();viewMonth=now.getMonth();
-const mk=monthKey(viewYear,viewMonth);
-if(!allData[mk]) allData[mk]={};
-const dk=String(now.getDate());
-if(!allData[mk][dk]) allData[mk][dk]={holiday:false,otInput:'',endTime:'17:00',metersInput:'',metersArr:[],metersLocked:false,timeLocked:false,expanded:true};
-else{allData[mk][dk].expanded=true;if(!allData[mk][dk].metersArr) allData[mk][dk].metersArr=parseMeters(allData[mk][dk].metersInput||'');}
-save();renderAll();
+async function initApp(){
+  allData=await loadFromCloud();
+  const now=new Date();
+  viewYear=now.getFullYear();viewMonth=now.getMonth();
+  const mk=monthKey(viewYear,viewMonth);
+  if(!allData[mk]) allData[mk]={};
+  const dk=String(now.getDate());
+  if(!allData[mk][dk]) allData[mk][dk]={holiday:false,otInput:'',endTime:'17:00',metersInput:'',metersArr:[],metersLocked:false,timeLocked:false,expanded:true};
+  else{allData[mk][dk].expanded=true;if(!allData[mk][dk].metersArr) allData[mk][dk].metersArr=parseMeters(allData[mk][dk].metersInput||'');}
+  save();renderAll();setTimeout(scrollToToday,80);
+}
+
+onAuthStateChanged(auth, user=>{
+  if(user){
+    hideLoginScreen();
+    initApp();
+  } else {
+    showLoginScreen();
+  }
+});
 </script>
+</div><!-- /appRoot -->
 </body>
 </html>
